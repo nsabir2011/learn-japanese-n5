@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Japanese N5 Practice</title>
+  <desc id="desc">A white hiragana あ on an indigo rounded square.</desc>
+  <rect width="512" height="512" rx="112" fill="#1f2a44"/>
+  <rect x="18" y="18" width="476" height="476" rx="98" fill="none" stroke="#9ccbff" stroke-width="12"/>
+  <text x="256" y="365" fill="#fff" font-family="Yu Gothic, Hiragino Kaku Gothic ProN, Segoe UI Symbol, Noto Sans CJK JP, sans-serif" font-size="300" font-weight="700" text-anchor="middle">あ</text>
+</svg>

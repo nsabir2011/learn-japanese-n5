@@ -19,6 +19,10 @@ for (const directory of directories) {
   });
 }
 
+for (const icon of ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png']) {
+  await cp(path.join(root, 'public', icon), path.join(target, icon));
+}
+
 for (const entry of await readdir(root, { withFileTypes: true })) {
   if (entry.isFile() && entry.name.endsWith('.html')) {
     await cp(path.join(root, entry.name), path.join(target, entry.name));
