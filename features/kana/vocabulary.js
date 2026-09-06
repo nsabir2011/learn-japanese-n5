@@ -267,6 +267,7 @@
   const MODE_KEYS = ["written", "spoken", "recall"];
   const UNIFIED_REVIEW_MODEL = "unified-v1";
   const SCOPE_LABELS = { adaptive: "Guided course", all: "All vocabulary", core: "Core lessons", lesson1: "Lesson 1", lesson2: "Lesson 2", extras: "Practical extras", trouble: "Trouble words" };
+  const CHOICE_COUNT_VALUES = ["auto", "4", "6", "8"];
 
   function emptyModeProgress() {
     return { seen: 0, correct: 0, wrong: 0, mastery: 0, lastWasCorrect: null, lastSeen: 0, dueAt: 0, dueQuestion: 0, recentResults: [] };
@@ -276,7 +277,7 @@
     return {
       version: VERSION, total: 0, correct: 0, streak: 0, bestStreak: 0,
       questionFormat: "mixed", practiceScope: "adaptive", pace: 50, newWordCredit: 0, unlockedStage: 0,
-      autoPronounce: true, items: {}, recent: [], savedAt: 0
+      autoPronounce: true, choiceCount: "auto", items: {}, recent: [], savedAt: 0
     };
   }
 
@@ -367,6 +368,7 @@
   if (state.questionFormat === "both") state.questionFormat = "mixed";
   if (!["written", "spoken", "recall", "mixed"].includes(state.questionFormat)) state.questionFormat = "mixed";
   if (!Object.hasOwn(SCOPE_LABELS, state.practiceScope)) state.practiceScope = "adaptive";
+  state.choiceCount = CHOICE_COUNT_VALUES.includes(String(state.choiceCount)) ? String(state.choiceCount) : "auto";
   state.pace = clamp(Number(state.pace) || 50, 10, 90);
   state.newWordCredit = clamp(Number(state.newWordCredit) || 0, 0, 1);
   state.unlockedStage = clamp(Number(state.unlockedStage) || 0, 0, STAGES.length - 1);
@@ -375,6 +377,7 @@
   let questionNumber = 0;
   let lastFormat = "";
   let currentChoiceIds = [];
+  let currentChoiceCount = 4;
   let currentMode = "written";
   let currentContext = "";
   let currentReason = "Getting ready";
@@ -605,6 +608,7 @@
           <div><h2>Vocabulary practice</h2><p class="muted">Guided course keeps new words in order; All vocabulary opens every lesson. Changing the format changes the question, not the word’s unlock or review schedule.</p></div>
           <label><span>Practice scope</span><select id="vocabPracticeScope"><option value="adaptive">Guided course</option><option value="all">All vocabulary</option><option value="core">Core lessons</option><option value="lesson1">Lesson 1</option><option value="lesson2">Lesson 2</option><option value="extras">Practical extras</option><option value="trouble">Trouble words</option></select><small id="vocabScopeHint">New words follow the guided sequence; learned words remain reviewable.</small></label>
           <label><span>Question direction</span><select id="vocabQuestionFormat"><option value="mixed">Mixed practice</option><option value="written">Japanese text → English</option><option value="spoken">Spoken Japanese → English</option><option value="recall">English → Japanese</option></select><small id="vocabFormatHint" aria-live="polite"></small></label>
+          <label><span>Answer choices</span><select id="vocabChoiceCount"><option value="auto">Auto (adaptive)</option><option value="4">4 choices</option><option value="6">6 choices</option><option value="8">8 choices</option></select><small id="vocabChoiceCountHint">Auto uses 4, 6, or 8 choices based on mastery.</small></label>
           <label class="vocab-pace"><span>New-word pace: <strong id="vocabPaceName">Balanced</strong></span><input id="vocabPace" type="range" min="10" max="90" step="10"><span class="vocab-pace-labels"><span>More review</span><span>More new</span></span></label>
           <div class="vocab-due-summary" aria-live="polite"><span class="tiny">Review queue</span><strong id="vocabDueSummary">No words due</strong><small id="vocabDueBreakdown">Guided course · one shared review queue · prompts adapt across enabled formats</small></div>
           <div class="vocab-inline-playback"><label class="toggle-line"><input type="checkbox" id="vocabAutoPronounce"> Automatically pronounce revealed words</label><button class="ghost" id="vocabManageVoices" type="button">Manage voices</button></div>
@@ -632,6 +636,7 @@
     document.querySelectorAll('.tab:not([data-tab="vocabulary"])').forEach(other => other.addEventListener("click", () => panel.classList.remove("active")));
     $("#vocabPracticeScope").value = state.practiceScope;
     $("#vocabQuestionFormat").value = state.questionFormat;
+    $("#vocabChoiceCount").value = state.choiceCount;
     $("#vocabPace").value = String(state.pace);
     $("#vocabAutoPronounce").checked = state.autoPronounce;
   }
@@ -686,7 +691,14 @@
   }
 
   function choiceCountFor(word, mode = currentMode) {
+    if (state.choiceCount !== "auto") return Number(state.choiceCount);
     return Scheduler.choiceCountForMastery(modeState(word, mode).mastery);
+  }
+
+  function choiceCountHint() {
+    return state.choiceCount === "auto"
+      ? "Auto uses 4, 6, or 8 choices based on mastery."
+      : `Uses ${state.choiceCount} choices from the next question.`;
   }
 
   function editSimilarity(left, right) {
@@ -775,6 +787,7 @@
     options.innerHTML = "";
     const choices = makeChoices(word, format);
     currentChoiceIds = choices.map(choice => choice.id);
+    currentChoiceCount = choices.length;
     options.dataset.count = String(choices.length);
     $("#vocabKeyboardHint").innerHTML = `Use <kbd>1</kbd>–<kbd>${choices.length}</kbd> to choose an answer.`;
     choices.forEach((choice, index) => {
@@ -925,7 +938,7 @@
         { label: "Session accuracy", value: sessionTotal ? `${Math.round(sessionCorrect / sessionTotal * 100)}%` : "—" },
         { label: "Due words", value: due.total ? due.total : "0" },
         { label: "Mastered", value: `${mastered.length} / ${WORDS.length}` },
-        { label: "Challenge", value: `${current ? choiceCountFor(current, currentMode) : 4} choices` }
+        { label: "Challenge", value: phase === "question" || phase === "answered" ? `${currentChoiceCount} choices` : state.choiceCount === "auto" ? "Auto" : `${state.choiceCount} choices` }
       ]
     } }));
   }
@@ -955,6 +968,7 @@
     setOptionalText("#vocabProgressWeak", weak.length);
     setOptionalText("#vocabProgressBestStreak", state.bestStreak);
     $("#vocabPaceName").textContent = paceLabel();
+    setOptionalText("#vocabChoiceCountHint", choiceCountHint());
     setOptionalText("#vocabPaceStatus", paceStatus());
     const due = dueReviewBreakdown();
     const dueScopeLabel = SCOPE_LABELS[state.practiceScope];
@@ -1044,6 +1058,7 @@
   });
   $("#vocabPace").addEventListener("input", event => { state.pace = Number(event.target.value); renderProgress(); });
   $("#vocabPace").addEventListener("change", saveState);
+  $("#vocabChoiceCount").addEventListener("change", event => { state.choiceCount = CHOICE_COUNT_VALUES.includes(event.target.value) ? event.target.value : "auto"; saveState(); });
   $("#vocabAutoPronounce").addEventListener("change", event => { state.autoPronounce = event.target.checked; saveState(); });
   window.addEventListener("kana-sprint-speech-voices-changed", updateFormatAvailability);
   document.addEventListener("keydown", event => {

@@ -135,6 +135,16 @@ test('vocabulary introduction and TTS controls have keyboard access', () => {
   assert.match(vocabulary, /phase === "introduction" \? \$\("#vocabIntroSpeech"\)/);
 });
 
+test('vocabulary answer choices support an adaptive default and manual override', () => {
+  const vocabulary = readFileSync(resolve(root, 'features/kana/vocabulary.js'), 'utf8');
+  assert.match(vocabulary, /choiceCount: "auto"/);
+  assert.match(vocabulary, /<select id="vocabChoiceCount"><option value="auto">Auto \(adaptive\)<\/option><option value="4">4 choices<\/option><option value="6">6 choices<\/option><option value="8">8 choices<\/option><\/select>/);
+  assert.match(vocabulary, /if \(state\.choiceCount !== "auto"\) return Number\(state\.choiceCount\)/);
+  assert.match(vocabulary, /currentChoiceCount = choices\.length/);
+  assert.match(vocabulary, /state\.choiceCount = CHOICE_COUNT_VALUES\.includes\(event\.target\.value\) \? event\.target\.value : "auto"/);
+  assert.match(vocabulary, /Uses \$\{state\.choiceCount\} choices from the next question/);
+});
+
 test('stylesheet asset references remain valid after source moves', () => {
   for (const stylesheet of stylesheetsWithLocalAssets) {
     const cssPath = resolve(root, stylesheet);
