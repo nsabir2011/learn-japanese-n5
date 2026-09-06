@@ -145,6 +145,14 @@ test('vocabulary answer choices support an adaptive default and manual override'
   assert.match(vocabulary, /Uses \$\{state\.choiceCount\} choices from the next question/);
 });
 
+test('vocabulary offers a silent bidirectional written mode', () => {
+  const vocabulary = readFileSync(resolve(root, 'features/kana/vocabulary.js'), 'utf8');
+  assert.match(vocabulary, /<option value="written-both">Japanese ↔ English \(written\)<\/option>/);
+  assert.match(vocabulary, /if \(state\.questionFormat === "written-both"\) return \["written", "recall"\]/);
+  assert.match(vocabulary, /"written-both": "Silent practice alternates between Japanese text → English and English → Japanese\."/);
+  assert.match(vocabulary, /\["written", "spoken", "recall", "written-both", "mixed"\]/);
+});
+
 test('stylesheet asset references remain valid after source moves', () => {
   for (const stylesheet of stylesheetsWithLocalAssets) {
     const cssPath = resolve(root, stylesheet);

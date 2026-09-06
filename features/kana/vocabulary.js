@@ -366,7 +366,7 @@
 
   let state = loadState();
   if (state.questionFormat === "both") state.questionFormat = "mixed";
-  if (!["written", "spoken", "recall", "mixed"].includes(state.questionFormat)) state.questionFormat = "mixed";
+  if (!["written", "spoken", "recall", "written-both", "mixed"].includes(state.questionFormat)) state.questionFormat = "mixed";
   if (!Object.hasOwn(SCOPE_LABELS, state.practiceScope)) state.practiceScope = "adaptive";
   state.choiceCount = CHOICE_COUNT_VALUES.includes(String(state.choiceCount)) ? String(state.choiceCount) : "auto";
   state.pace = clamp(Number(state.pace) || 50, 10, 90);
@@ -425,6 +425,7 @@
     if (state.questionFormat === "written") return ["written"];
     if (state.questionFormat === "spoken") return japaneseSpeechReady() ? ["spoken"] : ["written"];
     if (state.questionFormat === "recall") return ["recall"];
+    if (state.questionFormat === "written-both") return ["written", "recall"];
     return japaneseSpeechReady() ? MODE_KEYS : ["written", "recall"];
   }
 
@@ -607,7 +608,7 @@
         <div class="vocab-setup">
           <div><h2>Vocabulary practice</h2><p class="muted">Guided course keeps new words in order; All vocabulary opens every lesson. Changing the format changes the question, not the word’s unlock or review schedule.</p></div>
           <label><span>Practice scope</span><select id="vocabPracticeScope"><option value="adaptive">Guided course</option><option value="all">All vocabulary</option><option value="core">Core lessons</option><option value="lesson1">Lesson 1</option><option value="lesson2">Lesson 2</option><option value="extras">Practical extras</option><option value="trouble">Trouble words</option></select><small id="vocabScopeHint">New words follow the guided sequence; learned words remain reviewable.</small></label>
-          <label><span>Question direction</span><select id="vocabQuestionFormat"><option value="mixed">Mixed practice</option><option value="written">Japanese text → English</option><option value="spoken">Spoken Japanese → English</option><option value="recall">English → Japanese</option></select><small id="vocabFormatHint" aria-live="polite"></small></label>
+          <label><span>Question direction</span><select id="vocabQuestionFormat"><option value="mixed">Mixed practice</option><option value="written-both">Japanese ↔ English (written)</option><option value="written">Japanese text → English</option><option value="spoken">Spoken Japanese → English</option><option value="recall">English → Japanese</option></select><small id="vocabFormatHint" aria-live="polite"></small></label>
           <label><span>Answer choices</span><select id="vocabChoiceCount"><option value="auto">Auto (adaptive)</option><option value="4">4 choices</option><option value="6">6 choices</option><option value="8">8 choices</option></select><small id="vocabChoiceCountHint">Auto uses 4, 6, or 8 choices based on mastery.</small></label>
           <label class="vocab-pace"><span>New-word pace: <strong id="vocabPaceName">Balanced</strong></span><input id="vocabPace" type="range" min="10" max="90" step="10"><span class="vocab-pace-labels"><span>More review</span><span>More new</span></span></label>
           <div class="vocab-due-summary" aria-live="polite"><span class="tiny">Review queue</span><strong id="vocabDueSummary">No words due</strong><small id="vocabDueBreakdown">Guided course · one shared review queue · prompts adapt across enabled formats</small></div>
@@ -654,6 +655,7 @@
       written: "Build recognition from Japanese text.",
       spoken: ready ? "Listen without seeing the Japanese prompt." : "Listening requires a Japanese voice in Settings & Data.",
       recall: "Recall questions use similar-looking and similar-sounding Japanese choices.",
+      "written-both": "Silent practice alternates between Japanese text → English and English → Japanese.",
       mixed: ready ? "Mixed practice rotates through all three directions." : "Mixed practice uses reading and recall until a Japanese voice is available."
     };
     $("#vocabFormatHint").textContent = hints[state.questionFormat];
