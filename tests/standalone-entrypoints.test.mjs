@@ -289,6 +289,11 @@ test('numbers offers explicit speech recognition with review and typing fallback
   assert.match(numbers, /Type an answer to enable Submit answer/);
   assert.match(numbers, /\$\("#numberSpeechActions"\)\.classList\.add\("number-hidden"\)/);
   assert.match(styles, /numberSpeechStatus\[data-status="error"\]/);
+  assert.match(numbers, /correctFinalTranscript/);
+  assert.match(numbers, /submitSpeakingAnswer\(true\)/);
+  assert.match(numbers, /That doesn’t match yet\. Try speaking again or type your answer\./);
+  assert.match(numbers, /speechStatus !== "review"/);
+  assert.match(styles, /numberSpeechStatus\[data-status="mismatch"\]/);
 });
 
 test('number pattern mastery uses the same collapsible plus and minus pattern as vocabulary', () => {

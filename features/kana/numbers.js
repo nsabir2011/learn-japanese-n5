@@ -516,6 +516,8 @@
       listening: "Press <kbd>Enter</kbd> to stop recording.",
       processing: "Finishing transcription…",
       review: "Press <kbd>Enter</kbd> to submit · <kbd>R</kbd> to try again.",
+      accepted: "Correct answer recognized…",
+      mismatch: "Press <kbd>R</kbd> to try again, or type your answer.",
       error: "Press <kbd>Enter</kbd> to try again, or type your answer."
     })[speechStatus] || "";
   }
@@ -567,10 +569,19 @@
     if (!Recognition) return;
     speechSession = Speaking.createSession(Recognition, snapshot => {
       input.value = snapshot.text;
-      setSpeechStatus(snapshot.status, snapshot.message);
-      updateSpeakingInterpretation(snapshot.text, snapshot.status === "review");
+      const correctFinalTranscript = snapshot.status === "review" && Speaking.matches(current, snapshot.text);
+      if (snapshot.status === "review" && !correctFinalTranscript) {
+        setSpeechStatus("mismatch", "That doesn’t match yet. Try speaking again or type your answer.");
+        updateSpeakingInterpretation("", false);
+      } else if (correctFinalTranscript) {
+        setSpeechStatus("accepted", "Correct answer recognized.");
+        updateSpeakingInterpretation(snapshot.text, true);
+      } else {
+        setSpeechStatus(snapshot.status, snapshot.message);
+        updateSpeakingInterpretation(snapshot.text, false);
+      }
       const recording = ["starting", "listening", "processing"].includes(speechStatus);
-      if (speechStatus === "review") {
+      if (["review", "mismatch"].includes(speechStatus)) {
         $("#numberRecord").innerHTML = "🎤 Try again <kbd>R</kbd>";
         $("#numberRecord").setAttribute("aria-keyshortcuts", "R");
       } else {
@@ -580,6 +591,12 @@
       $("#numberRecord").disabled = speechStatus === "processing";
       $("#numberRecord").setAttribute("aria-pressed", String(recording));
       $("#numberSpeechSubmit").disabled = speechStatus !== "review" || !snapshot.text.trim();
+      if (correctFinalTranscript) {
+        const acceptedQuestion = current;
+        queueMicrotask(() => {
+          if (phase === "question" && current === acceptedQuestion && !typedSpeakingAnswer) submitSpeakingAnswer(true);
+        });
+      }
     });
   }
 
@@ -597,8 +614,8 @@
     input.focus();
   }
 
-  function submitSpeakingAnswer() {
-    if (phase !== "question" || current?.direction !== "speaking" || $("#numberSpeechSubmit").disabled) return;
+  function submitSpeakingAnswer(automaticallyAccepted = false) {
+    if (phase !== "question" || current?.direction !== "speaking" || (!automaticallyAccepted && $("#numberSpeechSubmit").disabled)) return;
     const value = $("#numberSpeechText").value.trim();
     const correct = typedSpeakingAnswer && speakingTypingScript === "romaji"
       ? Speaking.matchesRomaji(current, value)
@@ -797,7 +814,7 @@
       if (!$("#panel-numbers").classList.contains("active") || phase !== "question" || current?.direction !== "speaking") return;
       if (event.isComposing || event.keyCode === 229) return;
       const typingTarget = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement || event.target?.isContentEditable;
-      if (event.key.toLowerCase() === "r" && speechStatus === "review" && !typedSpeakingAnswer && !typingTarget) {
+      if (event.key.toLowerCase() === "r" && ["review", "mismatch"].includes(speechStatus) && !typedSpeakingAnswer && !typingTarget) {
         event.preventDefault();
         event.stopImmediatePropagation();
         if (!event.repeat) $("#numberRecord").click();

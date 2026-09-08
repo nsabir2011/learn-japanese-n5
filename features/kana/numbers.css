@@ -208,6 +208,7 @@
 .number-speaking p { margin: 0; }
 .number-speaking #numberSpeechStatus[data-status="error"] { color: #ff8a8a; font-weight: 800; }
 .number-speaking #numberSpeechStatus[data-status="error"]::before { content: "⚠ "; }
+.number-speaking #numberSpeechStatus[data-status="mismatch"] { color: #f2c56b; font-weight: 800; }
 .number-speaking button[aria-pressed="true"] { outline: 3px solid currentColor; outline-offset: 3px; }
 .number-transcript { display: grid; gap: .5rem; }
 .number-transcript label { font-size: 1rem; font-weight: 600; }
