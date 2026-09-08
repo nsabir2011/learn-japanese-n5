@@ -262,10 +262,15 @@ test('speaking practice exposes error, kana interpretation, romaji, and post-sub
   assert.match(vocabulary, /Press <kbd>Enter<\/kbd> to stop recording/);
   assert.match(vocabulary, /Press <kbd>Enter<\/kbd> to submit · <kbd>R<\/kbd> to try again/);
   assert.match(vocabulary, /Try again <kbd>R<\/kbd>/);
-  assert.match(vocabulary, /speechStatus === "review" && !typedAnswer && !typingTarget/);
+  assert.match(vocabulary, /\["review", "mismatch"\]\.includes\(speechStatus\) && !typedAnswer && !typingTarget/);
   assert.match(vocabulary, /Type an answer to enable Submit answer/);
   assert.match(vocabulary, /Press <kbd>Enter<\/kbd> for the next question/);
   assert.match(styles, /vocabSpeechStatus\[data-status="error"\]/);
+  assert.match(vocabulary, /correctFinalTranscript/);
+  assert.match(vocabulary, /submitSpeaking\(true\)/);
+  assert.match(vocabulary, /That doesn’t match yet\. Try speaking again or type your answer\./);
+  assert.match(vocabulary, /speechStatus !== "review"/);
+  assert.match(styles, /vocabSpeechStatus\[data-status="mismatch"\]/);
 });
 
 test('speaking direction keeps session controls aligned and disables answer choices', () => {

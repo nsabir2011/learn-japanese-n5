@@ -78,6 +78,17 @@
           "text": "Pattern mastery can now be expanded when needed and stays compact while you practice."
         }
       ]
+    },
+    {
+      "id": "2026-09-09.3",
+      "publishedAt": "2026-09-09",
+      "title": "Faster vocabulary speaking practice",
+      "changes": [
+        {
+          "pages": ["vocabulary"],
+          "text": "Correct spoken vocabulary answers are now accepted automatically. A mismatch stays unscored so you can retry with R or type your answer."
+        }
+      ]
     }
   ]
 }

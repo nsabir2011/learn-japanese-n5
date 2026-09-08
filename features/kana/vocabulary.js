@@ -406,6 +406,8 @@
       listening: "Press <kbd>Enter</kbd> to stop recording.",
       processing: "Finishing transcription…",
       review: "Press <kbd>Enter</kbd> to submit · <kbd>R</kbd> to try again.",
+      accepted: "Correct answer recognized…",
+      mismatch: "Press <kbd>R</kbd> to try again, or type your answer.",
       error: "Press <kbd>Enter</kbd> to try again, or type your answer.",
     };
     hint.innerHTML = messages[speechStatus] || "";
@@ -474,10 +476,19 @@
       : "Speech recognition isn’t available in this browser. Try Chrome or type your answer.");
     if (Recognition) speechSession = Speaking.createSession(Recognition, snapshot => {
       input.value = snapshot.text;
-      setSpeechStatus(snapshot.status, snapshot.message);
-      updateInterpretation(snapshot.text, snapshot.status === "review");
+      const correctFinalTranscript = snapshot.status === "review" && Speaking.matches(current, snapshot.text);
+      if (snapshot.status === "review" && !correctFinalTranscript) {
+        setSpeechStatus("mismatch", "That doesn’t match yet. Try speaking again or type your answer.");
+        updateInterpretation("", false);
+      } else if (correctFinalTranscript) {
+        setSpeechStatus("accepted", "Correct answer recognized.");
+        updateInterpretation(snapshot.text, true);
+      } else {
+        setSpeechStatus(snapshot.status, snapshot.message);
+        updateInterpretation(snapshot.text, false);
+      }
       const recording = ["starting", "listening", "processing"].includes(speechStatus);
-      if (speechStatus === "review") {
+      if (["review", "mismatch"].includes(speechStatus)) {
         $("#vocabRecord").innerHTML = "🎤 Try again <kbd>R</kbd>";
         $("#vocabRecord").setAttribute("aria-keyshortcuts", "R");
       } else {
@@ -487,11 +498,18 @@
       $("#vocabRecord").disabled = speechStatus === "processing";
       $("#vocabRecord").setAttribute("aria-pressed", String(recording));
       $("#vocabSpeechSubmit").disabled = speechStatus !== "review" || !snapshot.text.trim();
+      if (correctFinalTranscript) {
+        const acceptedWord = current;
+        queueMicrotask(() => {
+          if (phase === "question" && current === acceptedWord && currentMode === "speaking" && !typedAnswer) submitSpeaking(true);
+        });
+      }
     });
   }
 
-  function submitSpeaking() {
-    if (phase !== "question" || currentMode !== "speaking" || $("#vocabSpeechSubmit").disabled) return;
+  function submitSpeaking(automaticallyAccepted = false) {
+    const automatic = automaticallyAccepted === true;
+    if (phase !== "question" || currentMode !== "speaking" || (!automatic && $("#vocabSpeechSubmit").disabled)) return;
     const transcript = $("#vocabSpeechText").value.trim();
     const correct = typedAnswer && typingScript === "romaji" ? Speaking.matchesRomaji(current, transcript) : Speaking.matches(current, transcript);
     // Typed fallback shares recall statistics, but never increases speaking mastery.
@@ -1234,7 +1252,7 @@
     if (!$("#panel-vocabulary").classList.contains("active") || phase !== "question" || currentMode !== "speaking") return;
     if (event.isComposing || event.keyCode === 229) return;
     const typingTarget = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement || event.target?.isContentEditable;
-    if (event.key.toLowerCase() === "r" && speechStatus === "review" && !typedAnswer && !typingTarget) {
+    if (event.key.toLowerCase() === "r" && ["review", "mismatch"].includes(speechStatus) && !typedAnswer && !typingTarget) {
       event.preventDefault();
       event.stopImmediatePropagation();
       if (!event.repeat) $("#vocabRecord").click();

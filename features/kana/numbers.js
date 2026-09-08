@@ -615,7 +615,8 @@
   }
 
   function submitSpeakingAnswer(automaticallyAccepted = false) {
-    if (phase !== "question" || current?.direction !== "speaking" || (!automaticallyAccepted && $("#numberSpeechSubmit").disabled)) return;
+    const automatic = automaticallyAccepted === true;
+    if (phase !== "question" || current?.direction !== "speaking" || (!automatic && $("#numberSpeechSubmit").disabled)) return;
     const value = $("#numberSpeechText").value.trim();
     const correct = typedSpeakingAnswer && speakingTypingScript === "romaji"
       ? Speaking.matchesRomaji(current, value)
