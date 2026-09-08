@@ -37,6 +37,17 @@
           "text": "Cloud sync status now sits beneath the header navigation on every page so it is easier to distinguish from page links."
         }
       ]
+    },
+    {
+      "id": "2026-09-08.4",
+      "publishedAt": "2026-09-08",
+      "title": "A more consistent update experience",
+      "changes": [
+        {
+          "pages": ["all"],
+          "text": "Update notices and changelogs now match the trainer's colors, typography, buttons, and visual depth."
+        }
+      ]
     }
   ]
 }
