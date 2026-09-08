@@ -714,7 +714,7 @@
           <div><h2>Vocabulary practice</h2><p class="muted">Guided course keeps new words in order; All vocabulary opens every lesson. Changing the format changes the question, not the word’s unlock or review schedule.</p></div>
           <label><span>Practice scope</span><select id="vocabPracticeScope"><option value="adaptive">Guided course</option><option value="all">All vocabulary</option><option value="core">Core lessons</option><option value="lesson1">Lesson 1</option><option value="lesson2">Lesson 2</option><option value="extras">Practical extras</option><option value="trouble">Trouble words</option></select><small id="vocabScopeHint">New words follow the guided sequence; learned words remain reviewable.</small></label>
           <label><span>Question direction</span><select id="vocabQuestionFormat"><option value="mixed">Mixed practice</option><option value="written-both">Japanese ↔ English (written)</option><option value="written">Japanese text → English</option><option value="spoken">Spoken Japanese → English</option><option value="recall">English → Japanese</option><option value="speaking">English → Japanese (Speaking)</option></select><small id="vocabFormatHint" aria-live="polite"></small></label>
-          <label><span>Answer choices</span><select id="vocabChoiceCount"><option value="auto">Auto (adaptive)</option><option value="4">4 choices</option><option value="6">6 choices</option><option value="8">8 choices</option></select><small id="vocabChoiceCountHint">Auto uses 4, 6, or 8 choices based on mastery.</small></label>
+          <label><span>Answer choices</span><select id="vocabChoiceCount"><option value="auto">Auto (adaptive)</option><option value="4">4 choices</option><option value="6">6 choices</option><option value="8">8 choices</option><option value="not-used" disabled>Not used for speaking</option></select><small id="vocabChoiceCountHint">Auto uses 4, 6, or 8 choices based on mastery.</small></label>
           <label class="vocab-pace"><span>New-word pace: <strong id="vocabPaceName">Balanced</strong></span><input id="vocabPace" type="range" min="10" max="90" step="10"><span class="vocab-pace-labels"><span>More review</span><span>More new</span></span></label>
           <div class="vocab-due-summary" aria-live="polite"><span class="tiny">Review queue</span><strong id="vocabDueSummary">No words due</strong><small id="vocabDueBreakdown">Guided course · one shared review queue · prompts adapt across enabled formats</small></div>
           <div class="vocab-inline-playback"><label class="toggle-line"><input type="checkbox" id="vocabAutoPronounce"> Automatically pronounce revealed words</label><button class="ghost" id="vocabManageVoices" type="button">Manage voices</button></div>
@@ -749,6 +749,7 @@
 
   function updateFormatAvailability() {
     const select = $("#vocabQuestionFormat");
+    const choiceSelect = $("#vocabChoiceCount");
     const ready = japaneseSpeechReady();
     select.querySelector('option[value="spoken"]').disabled = !ready;
     if (!ready && state.questionFormat === "spoken") {
@@ -759,12 +760,16 @@
     const hints = {
       written: "Build recognition from Japanese text.",
       spoken: ready ? "Listen without seeing the Japanese prompt." : "Listening requires a Japanese voice in Settings & Data.",
-      speaking: "Say the Japanese expression, review what was heard, then submit. Typing is available if speech recognition fails.",
+      speaking: "Speak Japanese, review the transcript, then submit.",
       recall: "Recall questions use similar-looking and similar-sounding Japanese choices.",
       "written-both": "Silent practice alternates between Japanese text → English and English → Japanese.",
       mixed: ready ? "Mixed practice rotates through all three directions." : "Mixed practice uses reading and recall until a Japanese voice is available."
     };
     $("#vocabFormatHint").textContent = hints[state.questionFormat];
+    const speaking = state.questionFormat === "speaking";
+    choiceSelect.disabled = speaking;
+    choiceSelect.value = speaking ? "not-used" : state.choiceCount;
+    $("#vocabChoiceCountHint").textContent = speaking ? "Multiple-choice settings don’t apply here." : choiceCountHint();
   }
 
   function switchToVocabulary() {
@@ -1102,7 +1107,7 @@
     setOptionalText("#vocabProgressWeak", weak.length);
     setOptionalText("#vocabProgressBestStreak", state.bestStreak);
     $("#vocabPaceName").textContent = paceLabel();
-    setOptionalText("#vocabChoiceCountHint", choiceCountHint());
+    setOptionalText("#vocabChoiceCountHint", state.questionFormat === "speaking" ? "Multiple-choice settings don’t apply here." : choiceCountHint());
     setOptionalText("#vocabPaceStatus", paceStatus());
     const due = dueReviewBreakdown();
     const dueScopeLabel = SCOPE_LABELS[state.practiceScope];

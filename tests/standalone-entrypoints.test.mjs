@@ -150,7 +150,7 @@ test('vocabulary introduction and TTS controls have keyboard access', () => {
 test('vocabulary answer choices support an adaptive default and manual override', () => {
   const vocabulary = readFileSync(resolve(root, 'features/kana/vocabulary.js'), 'utf8');
   assert.match(vocabulary, /choiceCount: "auto"/);
-  assert.match(vocabulary, /<select id="vocabChoiceCount"><option value="auto">Auto \(adaptive\)<\/option><option value="4">4 choices<\/option><option value="6">6 choices<\/option><option value="8">8 choices<\/option><\/select>/);
+  assert.match(vocabulary, /<select id="vocabChoiceCount"><option value="auto">Auto \(adaptive\)<\/option><option value="4">4 choices<\/option><option value="6">6 choices<\/option><option value="8">8 choices<\/option><option value="not-used" disabled>Not used for speaking<\/option><\/select>/);
   assert.match(vocabulary, /if \(state\.choiceCount !== "auto"\) return Number\(state\.choiceCount\)/);
   assert.match(vocabulary, /currentChoiceCount = choices\.length/);
   assert.match(vocabulary, /state\.choiceCount = CHOICE_COUNT_VALUES\.includes\(event\.target\.value\) \? event\.target\.value : "auto"/);
@@ -173,6 +173,16 @@ test('speaking practice exposes error, kana interpretation, romaji, and post-sub
   assert.match(vocabulary, /id="vocabRomajiPreview"/);
   assert.match(vocabulary, /\$\("#vocabSpeechActions"\)\.classList\.add\("hidden"\)/);
   assert.match(styles, /vocabSpeechStatus\[data-status="error"\]/);
+});
+
+test('speaking direction keeps session controls aligned and disables answer choices', () => {
+  const vocabulary = readFileSync(resolve(root, 'features/kana/vocabulary.js'), 'utf8');
+  const styles = readFileSync(resolve(root, 'features/kana/vocabulary.css'), 'utf8');
+  assert.match(vocabulary, /<option value="not-used" disabled>Not used for speaking<\/option>/);
+  assert.match(vocabulary, /choiceSelect\.disabled = speaking/);
+  assert.match(vocabulary, /Multiple-choice settings don’t apply here\./);
+  assert.match(styles, /\.vocab-setup>label\{[^}]*align-self:start/);
+  assert.match(styles, /\.vocab-setup small\{min-height:2\.7em/);
 });
 
 test('stylesheet asset references remain valid after source moves', () => {
