@@ -264,7 +264,8 @@
   const shuffle = values => [...values].sort(() => Math.random() - .5);
   const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
   const Scheduler = window.KANA_SPRINT_VOCABULARY_SCHEDULER;
-  const MODE_KEYS = ["written", "spoken", "recall"];
+  const MODE_KEYS = ["written", "spoken", "recall", "speaking"];
+  const Speaking = window.KANA_SPRINT_VOCABULARY_SPEAKING;
   const UNIFIED_REVIEW_MODEL = "unified-v1";
   const SCOPE_LABELS = { adaptive: "Guided course", all: "All vocabulary", core: "Core lessons", lesson1: "Lesson 1", lesson2: "Lesson 2", extras: "Practical extras", trouble: "Trouble words" };
   const CHOICE_COUNT_VALUES = ["auto", "4", "6", "8"];
@@ -366,7 +367,7 @@
 
   let state = loadState();
   if (state.questionFormat === "both") state.questionFormat = "mixed";
-  if (!["written", "spoken", "recall", "written-both", "mixed"].includes(state.questionFormat)) state.questionFormat = "mixed";
+  if (!["written", "spoken", "recall", "speaking", "written-both", "mixed"].includes(state.questionFormat)) state.questionFormat = "mixed";
   if (!Object.hasOwn(SCOPE_LABELS, state.practiceScope)) state.practiceScope = "adaptive";
   state.choiceCount = CHOICE_COUNT_VALUES.includes(String(state.choiceCount)) ? String(state.choiceCount) : "auto";
   state.pace = clamp(Number(state.pace) || 50, 10, 90);
@@ -384,6 +385,60 @@
   let lastRegularScope = state.practiceScope === "trouble" ? "adaptive" : state.practiceScope;
   const sessionStartedTotal = state.total;
   const sessionStartedCorrect = state.correct;
+  let speechSession = null;
+  let speechStatus = "idle";
+  let typedAnswer = false;
+
+  function stopSpeaking() {
+    speechSession?.cancel();
+    speechSession = null;
+  }
+
+  function setupSpeaking() {
+    typedAnswer = false;
+    speechStatus = "idle";
+    const input = $("#vocabSpeechText");
+    input.value = "";
+    input.readOnly = true;
+    $("#vocabSpeechTextLabel").textContent = "We heard";
+    $("#vocabSpeaking").querySelectorAll("button,input").forEach(control => { control.disabled = false; });
+    $("#vocabSpeechSubmit").disabled = true;
+    $("#vocabRecord").textContent = "🎤 Speak";
+    $("#vocabRecord").setAttribute("aria-pressed", "false");
+    $("#vocabTypeInstead").textContent = "Type instead";
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    $("#vocabRecord").disabled = !Recognition;
+    $("#vocabSpeechStatus").textContent = Recognition
+      ? "Press Speak when you’re ready. Review your words before submitting."
+      : "Speech recognition isn’t available in this browser. Try Chrome or type your answer.";
+    $("#vocabKeyboardHint").innerHTML = "<kbd>Enter</kbd> stops recording; press again after review to submit.";
+    if (Recognition) speechSession = Speaking.createSession(Recognition, snapshot => {
+      speechStatus = snapshot.status;
+      input.value = snapshot.text;
+      $("#vocabSpeechStatus").textContent = snapshot.message;
+      const recording = ["starting", "listening", "processing"].includes(speechStatus);
+      $("#vocabRecord").textContent = recording ? (speechStatus === "processing" ? "Processing…" : "Stop recording") : "🎤 Try again";
+      $("#vocabRecord").disabled = speechStatus === "processing";
+      $("#vocabRecord").setAttribute("aria-pressed", String(recording));
+      $("#vocabSpeechSubmit").disabled = speechStatus !== "review" || !snapshot.text.trim();
+    });
+  }
+
+  function submitSpeaking() {
+    if (phase !== "question" || currentMode !== "speaking" || $("#vocabSpeechSubmit").disabled) return;
+    const transcript = $("#vocabSpeechText").value.trim();
+    const correct = Speaking.matches(current, transcript);
+    // Typed fallback shares recall statistics, but never increases speaking mastery.
+    if (typedAnswer) currentMode = "recall";
+    const progress = itemState(current);
+    const attemptType = typedAnswer ? "typed" : "speech";
+    progress.inputAttempts ||= {};
+    progress.inputAttempts[attemptType] = (Number(progress.inputAttempts[attemptType]) || 0) + 1;
+    answer(correct ? current.id : "");
+    const submitted = document.createElement("p");
+    submitted.textContent = `${typedAnswer ? "Typed answer" : "You said"}: ${transcript}`;
+    $("#vocabFeedback").appendChild(submitted);
+  }
 
   function saveState() {
     unlockedStageIndex();
@@ -425,12 +480,13 @@
     if (state.questionFormat === "written") return ["written"];
     if (state.questionFormat === "spoken") return japaneseSpeechReady() ? ["spoken"] : ["written"];
     if (state.questionFormat === "recall") return ["recall"];
+    if (state.questionFormat === "speaking") return ["speaking"];
     if (state.questionFormat === "written-both") return ["written", "recall"];
-    return japaneseSpeechReady() ? MODE_KEYS : ["written", "recall"];
+    return japaneseSpeechReady() ? ["written", "spoken", "recall"] : ["written", "recall"];
   }
 
   function modeLabel(mode) {
-    return { written: "reading", spoken: "listening", recall: "recall" }[mode] || mode;
+    return { written: "reading", spoken: "listening", recall: "recall", speaking: "speaking" }[mode] || mode;
   }
 
   function wordsForScope(scope = state.practiceScope) {
@@ -599,6 +655,12 @@
           <div class="word-audio-prompt hidden" id="vocabAudioPrompt"><span class="word-audio-icon" aria-hidden="true">🔊</span><strong>Listen to the Japanese expression</strong><button class="big-button" id="vocabQuestionSpeech" type="button" aria-keyshortcuts="R">Play again <kbd>R</kbd></button></div>
           </div>
           <div class="vocab-options" id="vocabOptions"></div>
+          <div class="vocab-speaking hidden" id="vocabSpeaking">
+            <p id="vocabSpeechStatus" role="status" aria-live="polite"></p>
+            <div class="vocab-transcript"><label for="vocabSpeechText" id="vocabSpeechTextLabel">We heard</label><input id="vocabSpeechText" lang="ja" readonly autocomplete="off" placeholder="Your Japanese words will appear here" aria-describedby="vocabSpeechStatus"></div>
+            <div class="actions"><button class="big-button" id="vocabRecord" type="button">🎤 Speak</button><button class="ghost" id="vocabTypeInstead" type="button">Type instead</button><button class="big-button" id="vocabSpeechSubmit" type="button" disabled>Submit answer</button></div>
+            <p class="tiny">Your browser may send audio to its speech service. Recognition retries don’t affect your streak. This checks word recall, not pronunciation quality.</p>
+          </div>
           <div class="feedback" id="vocabFeedback"></div>
         </div>
         <div class="footer-actions"><div class="actions"><button class="ghost" id="vocabDontKnow">I don’t know</button><button class="ghost hidden" id="vocabNext">Next <kbd>Enter</kbd></button></div><span class="tiny" id="vocabKeyboardHint">Use <kbd>1</kbd>–<kbd>4</kbd> to choose an answer.</span></div>
@@ -608,7 +670,7 @@
         <div class="vocab-setup">
           <div><h2>Vocabulary practice</h2><p class="muted">Guided course keeps new words in order; All vocabulary opens every lesson. Changing the format changes the question, not the word’s unlock or review schedule.</p></div>
           <label><span>Practice scope</span><select id="vocabPracticeScope"><option value="adaptive">Guided course</option><option value="all">All vocabulary</option><option value="core">Core lessons</option><option value="lesson1">Lesson 1</option><option value="lesson2">Lesson 2</option><option value="extras">Practical extras</option><option value="trouble">Trouble words</option></select><small id="vocabScopeHint">New words follow the guided sequence; learned words remain reviewable.</small></label>
-          <label><span>Question direction</span><select id="vocabQuestionFormat"><option value="mixed">Mixed practice</option><option value="written-both">Japanese ↔ English (written)</option><option value="written">Japanese text → English</option><option value="spoken">Spoken Japanese → English</option><option value="recall">English → Japanese</option></select><small id="vocabFormatHint" aria-live="polite"></small></label>
+          <label><span>Question direction</span><select id="vocabQuestionFormat"><option value="mixed">Mixed practice</option><option value="written-both">Japanese ↔ English (written)</option><option value="written">Japanese text → English</option><option value="spoken">Spoken Japanese → English</option><option value="recall">English → Japanese</option><option value="speaking">English → Japanese (Speaking)</option></select><small id="vocabFormatHint" aria-live="polite"></small></label>
           <label><span>Answer choices</span><select id="vocabChoiceCount"><option value="auto">Auto (adaptive)</option><option value="4">4 choices</option><option value="6">6 choices</option><option value="8">8 choices</option></select><small id="vocabChoiceCountHint">Auto uses 4, 6, or 8 choices based on mastery.</small></label>
           <label class="vocab-pace"><span>New-word pace: <strong id="vocabPaceName">Balanced</strong></span><input id="vocabPace" type="range" min="10" max="90" step="10"><span class="vocab-pace-labels"><span>More review</span><span>More new</span></span></label>
           <div class="vocab-due-summary" aria-live="polite"><span class="tiny">Review queue</span><strong id="vocabDueSummary">No words due</strong><small id="vocabDueBreakdown">Guided course · one shared review queue · prompts adapt across enabled formats</small></div>
@@ -616,7 +678,7 @@
         </div>
       </details>
       <div class="vocab-below">
-        <div class="card"><h2>Practice coverage</h2><p class="muted">One shared review schedule; these direction stats help choose the next prompt.</p><div class="vocab-direction-grid"><div><span>Japanese → English</span><strong id="vocabWrittenMastery">0%</strong><small id="vocabWrittenRecent">Not practised</small></div><div><span>Listening</span><strong id="vocabSpokenMastery">0%</strong><small id="vocabSpokenRecent">Not practised</small></div><div><span>English → Japanese</span><strong id="vocabRecallMastery">0%</strong><small id="vocabRecallRecent">Not practised</small></div></div></div>
+        <div class="card"><h2>Practice coverage</h2><p class="muted">One shared review schedule; these direction stats help choose the next prompt.</p><div class="vocab-direction-grid"><div><span>Japanese → English</span><strong id="vocabWrittenMastery">0%</strong><small id="vocabWrittenRecent">Not practised</small></div><div><span>Listening</span><strong id="vocabSpokenMastery">0%</strong><small id="vocabSpokenRecent">Not practised</small></div><div><span>English → Japanese</span><strong id="vocabRecallMastery">0%</strong><small id="vocabRecallRecent">Not practised</small></div><div><span>Speaking</span><strong id="vocabSpeakingMastery">0%</strong><small id="vocabSpeakingRecent">Not practised</small></div></div></div>
         <div class="card vocab-trouble-card"><div class="vocab-section-heading"><div><h2>Trouble words</h2><p class="muted" id="vocabTroubleHint">Recent misses in the selected scope matter more than old mistakes.</p></div><button class="ghost" id="vocabReviewTrouble" type="button">Review trouble words</button></div><div class="vocab-trouble-list" id="vocabTroubleList"></div></div>
       </div>
       <details class="card vocab-curriculum-card"><summary><span><strong>Lesson vocabulary curriculum</strong><small id="vocabCurriculumSummary">Stage 1 of ${STAGES.length}</small></span></summary><p class="muted">Guided course introduces new words in order and reviews words learned in any scope. All vocabulary opens the complete set without stage locks.</p><div class="vocab-stages" id="vocabStages"></div></details>`;
@@ -654,6 +716,7 @@
     const hints = {
       written: "Build recognition from Japanese text.",
       spoken: ready ? "Listen without seeing the Japanese prompt." : "Listening requires a Japanese voice in Settings & Data.",
+      speaking: "Say the Japanese expression, review what was heard, then submit. Typing is available if speech recognition fails.",
       recall: "Recall questions use similar-looking and similar-sounding Japanese choices.",
       "written-both": "Silent practice alternates between Japanese text → English and English → Japanese.",
       mixed: ready ? "Mixed practice rotates through all three directions." : "Mixed practice uses reading and recall until a Japanese voice is available."
@@ -764,6 +827,7 @@
   }
 
   function showQuestion(word, preferredMode) {
+    stopSpeaking();
     current = word;
     phase = "question";
     questionNumber++;
@@ -777,17 +841,27 @@
     const format = nextQuestionFormat(word, preferredMode);
     currentMode = format;
     const spoken = format === "spoken";
-    const recall = format === "recall";
-    currentContext = recall && CONTEXT_PROMPTS[word.id] && Math.random() < .65 ? CONTEXT_PROMPTS[word.id] : "";
+    const speaking = format === "speaking";
+    const recall = format === "recall" || speaking;
+    currentContext = !speaking && recall && CONTEXT_PROMPTS[word.id] && Math.random() < .65 ? CONTEXT_PROMPTS[word.id] : "";
     $("#vocabPrompt").textContent = recall ? (currentContext || word.meaning) : word.jp;
     $("#vocabPrompt").classList.toggle("vocab-recall-prompt", recall);
     $("#vocabPrompt").classList.toggle("hidden", spoken);
     $("#vocabAudioPrompt").classList.toggle("hidden", !spoken);
-    $("#vocabQuestionLabel").textContent = spoken ? "Listen and choose the English meaning" : recall ? (currentContext ? "Choose the expression that fits this situation" : "Choose the Japanese expression") : "Choose the English meaning";
+    $("#vocabQuestionLabel").textContent = speaking ? "Say the Japanese expression" : spoken ? "Listen and choose the English meaning" : recall ? (currentContext ? "Choose the expression that fits this situation" : "Choose the Japanese expression") : "Choose the English meaning";
     $("#vocabPracticeMode").textContent = `Vocabulary • ${modeLabel(format)}${currentContext ? " in context" : ""}`;
     const options = $("#vocabOptions");
     options.innerHTML = "";
     options.classList.remove("is-answered");
+    options.classList.toggle("hidden", speaking);
+    $("#vocabSpeaking").classList.toggle("hidden", !speaking);
+    if (speaking) {
+      currentChoiceIds = [];
+      currentChoiceCount = 0;
+      setupSpeaking();
+      publishDashboard();
+      return;
+    }
     const choices = makeChoices(word, format);
     currentChoiceIds = choices.map(choice => choice.id);
     currentChoiceCount = choices.length;
@@ -865,7 +939,10 @@
 
   function answer(selectedId, unknown = false) {
     if (phase !== "question" || !current) return;
+    stopSpeaking();
+    if (currentMode === "speaking" && typedAnswer) currentMode = "recall";
     phase = "answered";
+    $("#vocabSpeaking").querySelectorAll("button,input").forEach(control => { control.disabled = true; });
     const correct = !unknown && selectedId === current.id;
     const selectedWord = !correct && selectedId ? WORDS.find(word => word.id === selectedId) : null;
     applyResult(correct, selectedId);
@@ -890,6 +967,7 @@
   }
 
   function nextQuestion() {
+    stopSpeaking();
     window.KANA_SPRINT_SPEECH?.stop?.();
     const selected = selectWord();
     if (!selected?.word) return;
@@ -946,7 +1024,7 @@
         { label: "Session accuracy", value: sessionTotal ? `${Math.round(sessionCorrect / sessionTotal * 100)}%` : "—" },
         { label: "Due words", value: due.total ? due.total : "0" },
         { label: "Mastered", value: `${mastered.length} / ${WORDS.length}` },
-        { label: "Challenge", value: phase === "question" || phase === "answered" ? `${currentChoiceCount} choices` : state.choiceCount === "auto" ? "Auto" : `${state.choiceCount} choices` }
+        { label: "Challenge", value: phase === "question" || phase === "answered" ? (currentChoiceCount === 0 ? (typedAnswer ? "Typed answer" : "Spoken answer") : `${currentChoiceCount} choices`) : state.choiceCount === "auto" ? "Auto" : `${state.choiceCount} choices` }
       ]
     } }));
   }
@@ -1036,6 +1114,58 @@
   }
 
   buildUI();
+  $("#vocabRecord").addEventListener("click", () => {
+    if (phase !== "question") return;
+    window.KANA_SPRINT_SPEECH?.stop?.();
+    if (["starting", "listening"].includes(speechStatus)) speechSession?.stop();
+    else speechSession?.start();
+  });
+  $("#vocabTypeInstead").addEventListener("click", () => {
+    if (typedAnswer) { setupSpeaking(); return; }
+    stopSpeaking();
+    typedAnswer = true;
+    speechStatus = "typed";
+    $("#vocabRecord").disabled = true;
+    $("#vocabRecord").textContent = "🎤 Speak";
+    $("#vocabRecord").setAttribute("aria-pressed", "false");
+    $("#vocabTypeInstead").textContent = "Use microphone";
+    $("#vocabSpeechTextLabel").textContent = "Your Japanese answer";
+    $("#vocabSpeechText").readOnly = false;
+    $("#vocabSpeechText").value = "";
+    $("#vocabSpeechSubmit").disabled = true;
+    $("#vocabSpeechStatus").textContent = "Type in Japanese (kana or kanji). This counts as a typed recall attempt.";
+    $("#vocabKeyboardHint").innerHTML = "Press <kbd>Enter</kbd> to submit your typed answer.";
+    $("#vocabSpeechText").focus();
+  });
+  $("#vocabSpeechText").addEventListener("input", () => {
+    if (typedAnswer) $("#vocabSpeechSubmit").disabled = !$("#vocabSpeechText").value.trim();
+  });
+  $("#vocabSpeechSubmit").addEventListener("click", submitSpeaking);
+  // Capture Enter so a focused microphone button cannot restart recording during review.
+  document.addEventListener("keydown", event => {
+    if (!$("#panel-vocabulary").classList.contains("active") || phase !== "question" || currentMode !== "speaking" || event.key !== "Enter") return;
+    if (event.isComposing || event.keyCode === 229) return;
+    if (event.target.closest?.("select,a") || event.target.matches?.("button:not(#vocabRecord):not(#vocabSpeechSubmit)")) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.repeat) return;
+    if (["starting", "listening"].includes(speechStatus)) speechSession?.stop();
+    else if (speechStatus === "review" || typedAnswer) submitSpeaking();
+    else if (["idle", "error"].includes(speechStatus)) $("#vocabRecord").click();
+  }, true);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && speechSession) {
+      stopSpeaking();
+      if (phase === "question" && currentMode === "speaking") setupSpeaking();
+    }
+  });
+  window.addEventListener("pagehide", stopSpeaking);
+  new MutationObserver(() => {
+    if (!$("#panel-vocabulary").classList.contains("active") && speechSession) {
+      stopSpeaking();
+      if (phase === "question" && currentMode === "speaking") setupSpeaking();
+    }
+  }).observe($("#panel-vocabulary"), { attributes: true, attributeFilter: ["class"] });
   window.KANA_SPRINT_SYNC_RANGE?.($("#vocabPace"));
   updateFormatAvailability();
   renderProgress();
@@ -1087,8 +1217,8 @@
         return;
       }
     }
-    if (event.key === "Enter" && phase === "answered") { event.preventDefault(); nextQuestion(); return; }
-    if (/^[1-8]$/.test(event.key) && phase === "question") {
+    if (event.key === "Enter" && phase === "answered") { event.preventDefault(); if (!event.repeat) nextQuestion(); return; }
+    if (/^[1-8]$/.test(event.key) && phase === "question" && currentMode !== "speaking" && !isInteractive) {
       const button = $("#vocabOptions").children[Number(event.key) - 1];
       if (button) { event.preventDefault(); button.click(); }
     }

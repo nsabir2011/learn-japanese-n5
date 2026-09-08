@@ -162,7 +162,7 @@ test('vocabulary offers a silent bidirectional written mode', () => {
   assert.match(vocabulary, /<option value="written-both">Japanese ↔ English \(written\)<\/option>/);
   assert.match(vocabulary, /if \(state\.questionFormat === "written-both"\) return \["written", "recall"\]/);
   assert.match(vocabulary, /"written-both": "Silent practice alternates between Japanese text → English and English → Japanese\."/);
-  assert.match(vocabulary, /\["written", "spoken", "recall", "written-both", "mixed"\]/);
+  assert.match(vocabulary, /\["written", "spoken", "recall", "speaking", "written-both", "mixed"\]/);
 });
 
 test('stylesheet asset references remain valid after source moves', () => {
