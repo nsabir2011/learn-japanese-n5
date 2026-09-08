@@ -278,6 +278,19 @@ test('speaking direction keeps session controls aligned and disables answer choi
   assert.match(styles, /\.vocab-setup small\{min-height:2\.7em/);
 });
 
+test('numbers offers explicit speech recognition with review and typing fallback controls', () => {
+  const numbers = readFileSync(resolve(root, 'features/kana/numbers.js'), 'utf8');
+  const styles = readFileSync(resolve(root, 'features/kana/numbers.css'), 'utf8');
+  const html = readFileSync(resolve(root, 'numbers.html'), 'utf8');
+  assert.match(html, /numbers-speaking\.js/);
+  assert.match(numbers, /<option value="speaking">Digits → Japanese \(Speaking\)<\/option>/);
+  assert.match(numbers, /Press <kbd>Enter<\/kbd> to start speaking/);
+  assert.match(numbers, /Press <kbd>Enter<\/kbd> to submit · <kbd>R<\/kbd> to try again/);
+  assert.match(numbers, /Type an answer to enable Submit answer/);
+  assert.match(numbers, /\$\("#numberSpeechActions"\)\.classList\.add\("number-hidden"\)/);
+  assert.match(styles, /numberSpeechStatus\[data-status="error"\]/);
+});
+
 test('stylesheet asset references remain valid after source moves', () => {
   for (const stylesheet of stylesheetsWithLocalAssets) {
     const cssPath = resolve(root, stylesheet);

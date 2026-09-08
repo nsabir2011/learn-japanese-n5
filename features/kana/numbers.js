@@ -39,6 +39,7 @@
   const $ = selector => document.querySelector(selector);
   const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
   const choose = values => values[Math.floor(Math.random() * values.length)];
+  const Speaking = window.KANA_SPRINT_NUMBERS_SPEAKING;
   const normalize = value => String(value ?? "").toLowerCase().trim()
     .replace(/[\s,'’_-]+/g, "").replace(/ō/g, "ou");
 
@@ -82,6 +83,10 @@
   let questionNumber = 0;
   let rescueFailures = 0;
   let typoRetried = false;
+  let speechSession = null;
+  let speechStatus = "idle";
+  let typedSpeakingAnswer = false;
+  let speakingTypingScript = "japanese";
 
   function saveState() {
     state.savedAt = Date.now();
@@ -290,18 +295,26 @@
         <div id="numberIntro" class="number-intro number-hidden"></div>
         <div id="numberQuestion">
           <div class="question"><div class="question-label" id="numberQuestionLabel">Type the Japanese reading in romaji</div><div class="prompt number-prompt" id="numberPrompt">7</div><div class="number-audio-prompt number-hidden" id="numberAudioPrompt"><span class="number-audio-icon" aria-hidden="true">🔊</span><strong>Listen to the Japanese number</strong><button class="big-button" id="numberQuestionSpeech" type="button">Play number again</button><span class="tiny">Replay as often as you need. Replays do not reduce mastery.</span></div></div>
-          <div class="typing"><input id="numberInput" class="answer-input" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text" placeholder="Type the answer and press Enter"><div class="typing-hint">A likely keyboard typo gets one clean retry. A real mistake opens rescue choices.</div></div>
+          <div class="typing" id="numberTyping"><input id="numberInput" class="answer-input" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text" placeholder="Type the answer and press Enter"><div class="typing-hint">A likely keyboard typo gets one clean retry. A real mistake opens rescue choices.</div></div>
+          <div class="number-speaking number-hidden" id="numberSpeaking">
+            <p id="numberSpeechStatus" role="status" aria-live="polite"></p>
+            <div class="number-transcript"><label for="numberSpeechText" id="numberSpeechTextLabel">We heard</label><input id="numberSpeechText" lang="ja" readonly autocomplete="off" placeholder="Your Japanese number will appear here" aria-describedby="numberSpeechStatus"></div>
+            <div class="number-interpretation number-hidden" id="numberSpeechInterpretation"><span>Interpreted as</span><strong id="numberSpeechReading" lang="ja"></strong><small>The browser transcript is shown above.</small></div>
+            <div class="number-typing-modes number-hidden" id="numberTypingModes" aria-label="Typing script"><span>Type with</span><div class="number-segmented"><button id="numberTypeJapanese" type="button" aria-pressed="true">Japanese</button><button id="numberTypeRomaji" type="button" aria-pressed="false">Romaji</button></div></div>
+            <div class="number-actions" id="numberSpeechActions"><button class="big-button" id="numberRecord" type="button">🎤 Speak</button><button class="ghost" id="numberTypeInstead" type="button">Type instead</button><button class="big-button" id="numberSpeechSubmit" type="button" disabled>Submit answer</button></div>
+            <p class="tiny">Your browser may send audio to its speech service. Recognition retries don’t affect your streak. This checks number recall, not pronunciation quality.</p>
+          </div>
           <div class="feedback" id="numberFeedback"></div>
           <div class="rescue-wrap" id="numberRescue"><div class="rescue-title">Choose the correct answer</div><div class="number-rescue-options" id="numberOptions"></div></div>
         </div>
-        <div class="footer-actions"><div class="number-actions"><button class="ghost" id="numberDontKnow">I don't know</button><button class="ghost number-hidden" id="numberNext">Next <kbd>Enter</kbd></button></div><span class="tiny">Number progress is saved independently and follows you between sessions.</span></div>
+        <div class="footer-actions"><div class="number-actions"><button class="ghost" id="numberDontKnow">I don't know</button><button class="ghost number-hidden" id="numberNext">Next <kbd>Enter</kbd></button></div><span class="tiny" id="numberKeyboardHint">Number progress is saved independently and follows you between sessions.</span></div>
       </div>
       <div class="number-layout">
         <div class="card">
           <h2>Practice setup</h2>
           <p class="muted">Adjust the session when you need to. New patterns are explained before testing, and weak patterns return more often.</p>
           <div class="number-controls">
-            <label><span class="tiny">Question direction</span><select id="numberDirection"><option value="reading">Digits → Japanese reading</option><option value="digits">Japanese reading → digits</option><option value="audio">Spoken Japanese → digits</option><option value="mixed">Digits ↔ Japanese reading</option><option value="all">All directions</option></select></label>
+            <label><span class="tiny">Question direction</span><select id="numberDirection"><option value="reading">Digits → Japanese reading</option><option value="speaking">Digits → Japanese (Speaking)</option><option value="digits">Japanese reading → digits</option><option value="audio">Spoken Japanese → digits</option><option value="mixed">Digits ↔ Japanese reading</option><option value="all">All directions</option></select></label>
             <label><span class="tiny">Practice range</span><select id="numberRange">${RANGES.map(range => `<option value="${range.value}">${range.label}</option>`).join("")}</select></label>
             <label><span class="tiny">New-pattern pace: <strong id="numberPaceName"></strong></span><input id="numberPace" type="range" min="10" max="90" step="10"><span class="number-pace-labels"><span>More review</span><span>More new</span></span></label>
           </div>
@@ -337,7 +350,9 @@
     const ready = japaneseSpeechReady();
     ["audio", "all"].forEach(value => { select.querySelector(`option[value="${value}"]`).disabled = !ready; });
     const audioSelected = state.direction === "audio" || state.direction === "all";
-    $("#numberDirectionHint").textContent = state.direction === "mixed"
+    $("#numberDirectionHint").textContent = state.direction === "speaking"
+      ? "Say the displayed number in Japanese, review what was heard, then submit. Typing is always available."
+      : state.direction === "mixed"
       ? "Alternates between digits-first and reading-first questions."
       : ready
         ? (state.direction === "all" ? "Questions rotate through all three directions." : state.direction === "audio" ? "The spoken reading is the question; no Japanese text is shown." : "")
@@ -416,6 +431,7 @@
   }
 
   function nextQuestion() {
+    stopSpeakingRecognition();
     if (!window.KANA_SPRINT_SPEECH?.getPreferences().continueOnAdvance) window.KANA_SPRINT_SPEECH?.stop();
     current = makeQuestion();
     questionNumber++;
@@ -430,6 +446,7 @@
   }
 
   function showIntroduction(concept) {
+    stopSpeakingRecognition();
     phase = "intro";
     $("#numberQuestion").classList.add("number-hidden");
     $("#numberIntro").classList.remove("number-hidden");
@@ -457,9 +474,10 @@
     clearFeedback();
     const asksForReading = current.direction === "reading";
     const asksFromAudio = current.direction === "audio";
-    $("#numberQuestionLabel").textContent = asksForReading ? "Type the Japanese reading in romaji" : asksFromAudio ? "Listen and type the number using digits" : "Type this number using digits";
-    $("#numberPrompt").textContent = asksForReading ? current.number.toLocaleString() : current.hiragana;
-    $("#numberPrompt").classList.toggle("reading", !asksForReading);
+    const asksForSpeaking = current.direction === "speaking";
+    $("#numberQuestionLabel").textContent = asksForSpeaking ? "Say this number in Japanese" : asksForReading ? "Type the Japanese reading in romaji" : asksFromAudio ? "Listen and type the number using digits" : "Type this number using digits";
+    $("#numberPrompt").textContent = asksForReading || asksForSpeaking ? current.number.toLocaleString() : current.hiragana;
+    $("#numberPrompt").classList.toggle("reading", !asksForReading && !asksForSpeaking);
     $("#numberPrompt").classList.toggle("number-hidden", asksFromAudio);
     $("#numberAudioPrompt").classList.toggle("number-hidden", !asksFromAudio);
     const input = $("#numberInput");
@@ -467,12 +485,128 @@
     input.disabled = false;
     input.inputMode = asksForReading ? "text" : "numeric";
     input.placeholder = asksForReading ? "Type the reading and press Enter" : "Type the digits and press Enter";
+    $("#numberTyping").classList.toggle("number-hidden", asksForSpeaking);
+    $("#numberSpeaking").classList.toggle("number-hidden", !asksForSpeaking);
     $("#numberDontKnow").classList.remove("number-hidden");
     $("#numberNext").classList.add("number-hidden");
     $("#numberCount").textContent = `Question ${questionNumber}`;
-    if (asksFromAudio) setTimeout(() => speakJapanese(current.hiragana), 100);
-    setTimeout(() => input.focus(), 0);
+    if (asksForSpeaking) setupSpeaking();
+    else {
+      $("#numberKeyboardHint").textContent = "Number progress is saved independently and follows you between sessions.";
+      if (asksFromAudio) setTimeout(() => speakJapanese(current.hiragana), 100);
+      setTimeout(() => input.focus(), 0);
+    }
     publishActivityStatus();
+  }
+
+  function updateSpeakingKeyboardHint() {
+    if (phase !== "question" || current?.direction !== "speaking") return;
+    const hasAnswer = Boolean($("#numberSpeechText")?.value.trim());
+    const hint = $("#numberKeyboardHint");
+    if (typedSpeakingAnswer) {
+      hint.innerHTML = hasAnswer ? "Press <kbd>Enter</kbd> to submit your typed answer." : "Type an answer to enable Submit answer.";
+      return;
+    }
+    hint.innerHTML = ({
+      idle: "Press <kbd>Enter</kbd> to start speaking.",
+      starting: "Press <kbd>Enter</kbd> to stop recording.",
+      listening: "Press <kbd>Enter</kbd> to stop recording.",
+      processing: "Finishing transcription…",
+      review: "Press <kbd>Enter</kbd> to submit · <kbd>R</kbd> to try again.",
+      error: "Press <kbd>Enter</kbd> to try again, or type your answer."
+    })[speechStatus] || "";
+  }
+
+  function setSpeechStatus(status, message) {
+    speechStatus = status;
+    const element = $("#numberSpeechStatus");
+    element.dataset.status = status;
+    element.textContent = message;
+    updateSpeakingKeyboardHint();
+  }
+
+  function updateSpeakingInterpretation(value, visible = true) {
+    const interpreted = Speaking.interpretation(current, value);
+    $("#numberSpeechReading").textContent = interpreted || "Number interpretation unavailable";
+    $("#numberSpeechInterpretation").classList.toggle("number-hidden", !visible);
+    $("#numberSpeechInterpretation").classList.toggle("is-unavailable", !interpreted);
+  }
+
+  function stopSpeakingRecognition() {
+    speechSession?.cancel();
+    speechSession = null;
+  }
+
+  function setupSpeaking() {
+    stopSpeakingRecognition();
+    typedSpeakingAnswer = false;
+    speechStatus = "idle";
+    const input = $("#numberSpeechText");
+    input.value = "";
+    input.readOnly = true;
+    input.lang = "ja";
+    input.placeholder = "Your browser transcript will appear here";
+    $("#numberSpeechTextLabel").textContent = "We heard";
+    $("#numberSpeaking").querySelectorAll("button,input").forEach(control => { control.disabled = false; });
+    $("#numberSpeechActions").classList.remove("number-hidden");
+    $("#numberTypingModes").classList.add("number-hidden");
+    $("#numberSpeechInterpretation").classList.add("number-hidden");
+    $("#numberSpeechSubmit").disabled = true;
+    $("#numberRecord").textContent = "🎤 Speak";
+    $("#numberRecord").removeAttribute("aria-keyshortcuts");
+    $("#numberRecord").setAttribute("aria-pressed", "false");
+    $("#numberTypeInstead").textContent = "Type instead";
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    $("#numberRecord").disabled = !Recognition;
+    setSpeechStatus(Recognition ? "idle" : "error", Recognition
+      ? "Press Speak when you’re ready. Review the transcript before submitting."
+      : "Speech recognition isn’t available in this browser. Try Chrome or Edge, or type your answer.");
+    if (!Recognition) return;
+    speechSession = Speaking.createSession(Recognition, snapshot => {
+      input.value = snapshot.text;
+      setSpeechStatus(snapshot.status, snapshot.message);
+      updateSpeakingInterpretation(snapshot.text, snapshot.status === "review");
+      const recording = ["starting", "listening", "processing"].includes(speechStatus);
+      if (speechStatus === "review") {
+        $("#numberRecord").innerHTML = "🎤 Try again <kbd>R</kbd>";
+        $("#numberRecord").setAttribute("aria-keyshortcuts", "R");
+      } else {
+        $("#numberRecord").textContent = recording ? (speechStatus === "processing" ? "Processing…" : "Stop recording") : "🎤 Try again";
+        $("#numberRecord").removeAttribute("aria-keyshortcuts");
+      }
+      $("#numberRecord").disabled = speechStatus === "processing";
+      $("#numberRecord").setAttribute("aria-pressed", String(recording));
+      $("#numberSpeechSubmit").disabled = speechStatus !== "review" || !snapshot.text.trim();
+    });
+  }
+
+  function setSpeakingTypingScript(script) {
+    speakingTypingScript = script === "romaji" ? "romaji" : "japanese";
+    $("#numberTypeJapanese").setAttribute("aria-pressed", String(speakingTypingScript === "japanese"));
+    $("#numberTypeRomaji").setAttribute("aria-pressed", String(speakingTypingScript === "romaji"));
+    const input = $("#numberSpeechText");
+    input.lang = speakingTypingScript === "romaji" ? "en" : "ja";
+    input.placeholder = speakingTypingScript === "romaji" ? "Type romaji, for example yonjuuni" : "Type kana, kanji, or digits";
+    $("#numberSpeechTextLabel").textContent = speakingTypingScript === "romaji" ? "Your romaji answer" : "Your Japanese answer";
+    input.value = "";
+    $("#numberSpeechSubmit").disabled = true;
+    setSpeechStatus("typed", speakingTypingScript === "romaji" ? "Type the Japanese reading in romaji, then submit." : "Type the number in Japanese, then submit.");
+    input.focus();
+  }
+
+  function submitSpeakingAnswer() {
+    if (phase !== "question" || current?.direction !== "speaking" || $("#numberSpeechSubmit").disabled) return;
+    const value = $("#numberSpeechText").value.trim();
+    const correct = typedSpeakingAnswer && speakingTypingScript === "romaji"
+      ? Speaking.matchesRomaji(current, value)
+      : Speaking.matches(current, value);
+    stopSpeakingRecognition();
+    updateMastery(correct);
+    showAnswer(correct);
+    const submitted = document.createElement("p");
+    submitted.className = "number-submitted-answer";
+    submitted.textContent = `${typedSpeakingAnswer ? "Typed answer" : "You said"}: ${value}`;
+    $("#numberFeedback").appendChild(submitted);
   }
 
   function updateMastery(correct) {
@@ -505,6 +639,7 @@
     if (phase === "intro") { beginAfterIntroduction(); return; }
     if (phase === "answer") { nextQuestion(); return; }
     if (phase === "rescue") return;
+    if (current.direction === "speaking") { submitSpeakingAnswer(); return; }
     const input = $("#numberInput");
     if (!input.value.trim()) return;
     if (isCorrect(input.value, current)) {
@@ -525,7 +660,10 @@
 
   function showAnswer(wasCorrect) {
     phase = "answer";
+    stopSpeakingRecognition();
     $("#numberInput").disabled = true;
+    $("#numberSpeaking").querySelectorAll("button,input").forEach(control => { control.disabled = true; });
+    $("#numberSpeechActions").classList.add("number-hidden");
     $("#numberDontKnow").classList.add("number-hidden");
     $("#numberNext").classList.remove("number-hidden");
     $("#numberRescue").classList.remove("show");
@@ -533,6 +671,7 @@
     $("#numberReplaySpeech").disabled = !japaneseSpeechReady();
     $("#numberReplaySpeech").addEventListener("click", () => speakJapanese(current.hiragana));
     if (state.speechAutoPlay) speakJapanese(current.hiragana);
+    if (current.direction === "speaking") $("#numberKeyboardHint").innerHTML = "Press <kbd>Enter</kbd> for the next question.";
     $("#numberNext").focus();
   }
 
@@ -625,15 +764,77 @@
         nextQuestion();
       }
     });
-    $("#numberDontKnow").addEventListener("click", () => { updateMastery(false); showRescue(); });
+    $("#numberRecord").addEventListener("click", () => {
+      if (["starting", "listening"].includes(speechStatus)) speechSession?.stop();
+      else speechSession?.start();
+    });
+    $("#numberTypeInstead").addEventListener("click", () => {
+      if (typedSpeakingAnswer) { setupSpeaking(); return; }
+      stopSpeakingRecognition();
+      typedSpeakingAnswer = true;
+      $("#numberRecord").disabled = true;
+      $("#numberRecord").textContent = "🎤 Speak";
+      $("#numberRecord").removeAttribute("aria-keyshortcuts");
+      $("#numberRecord").setAttribute("aria-pressed", "false");
+      $("#numberTypeInstead").textContent = "Use microphone";
+      $("#numberSpeechText").readOnly = false;
+      $("#numberTypingModes").classList.remove("number-hidden");
+      $("#numberSpeechInterpretation").classList.add("number-hidden");
+      setSpeakingTypingScript(speakingTypingScript);
+    });
+    $("#numberSpeechText").addEventListener("input", () => {
+      if (!typedSpeakingAnswer) return;
+      $("#numberSpeechSubmit").disabled = !$("#numberSpeechText").value.trim();
+      updateSpeakingKeyboardHint();
+    });
+    $("#numberTypeJapanese").addEventListener("click", () => setSpeakingTypingScript("japanese"));
+    $("#numberTypeRomaji").addEventListener("click", () => setSpeakingTypingScript("romaji"));
+    $("#numberSpeechSubmit").addEventListener("click", submitSpeakingAnswer);
+    document.addEventListener("keydown", event => {
+      if (!$("#panel-numbers").classList.contains("active") || phase !== "question" || current?.direction !== "speaking") return;
+      if (event.isComposing || event.keyCode === 229) return;
+      const typingTarget = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement || event.target?.isContentEditable;
+      if (event.key.toLowerCase() === "r" && speechStatus === "review" && !typedSpeakingAnswer && !typingTarget) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!event.repeat) $("#numberRecord").click();
+        return;
+      }
+      if (event.key !== "Enter") return;
+      if (event.target.closest?.("select,a") || event.target.matches?.("button:not(#numberRecord):not(#numberSpeechSubmit)")) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (event.repeat) return;
+      if (["starting", "listening"].includes(speechStatus)) speechSession?.stop();
+      else if (speechStatus === "review" || typedSpeakingAnswer) submitSpeakingAnswer();
+      else if (["idle", "error"].includes(speechStatus)) $("#numberRecord").click();
+    }, true);
+    $("#numberDontKnow").addEventListener("click", () => {
+      updateMastery(false);
+      if (current.direction === "speaking") showAnswer(false);
+      else showRescue();
+    });
     $("#numberNext").addEventListener("click", nextQuestion);
     $("#numberRange").addEventListener("change", event => { state.range = Number(event.target.value); saveState(); current = null; nextQuestion(); });
-    $("#numberDirection").addEventListener("change", event => { state.direction = event.target.value; updateDirectionAvailability(); saveState(); current = null; nextQuestion(); });
+    $("#numberDirection").addEventListener("change", event => { stopSpeakingRecognition(); state.direction = event.target.value; updateDirectionAvailability(); saveState(); current = null; nextQuestion(); });
     $("#numberPace").addEventListener("input", event => { state.pace = Number(event.target.value); saveState(); });
     $("#numberSpeechAuto").addEventListener("change", event => { state.speechAutoPlay = event.target.checked; saveState(); });
     $("#numberManageVoices").addEventListener("click", () => window.KANA_SPRINT_SPEECH?.openSettings());
     $("#numberQuestionSpeech").addEventListener("click", () => { if (current?.direction === "audio" && phase === "question") speakJapanese(current.hiragana); });
     window.addEventListener("kana-sprint-speech-voices-changed", updateDirectionAvailability);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && speechSession) {
+        stopSpeakingRecognition();
+        if (phase === "question" && current?.direction === "speaking") setupSpeaking();
+      }
+    });
+    window.addEventListener("pagehide", stopSpeakingRecognition);
+    new MutationObserver(() => {
+      if (!$("#panel-numbers").classList.contains("active") && speechSession) {
+        stopSpeakingRecognition();
+        if (phase === "question" && current?.direction === "speaking") setupSpeaking();
+      }
+    }).observe($("#panel-numbers"), { attributes: true, attributeFilter: ["class"] });
     $("#numberExport")?.addEventListener("click", exportProgress);
     $("#numberImport")?.addEventListener("click", () => $("#numberImportFile")?.click());
     $("#numberImportFile")?.addEventListener("change", event => {

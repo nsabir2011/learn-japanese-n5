@@ -195,6 +195,25 @@
 }
 
 .number-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.number-speaking { display: grid; gap: 1rem; width: min(830px, calc(100% - 28px)); margin: 0 auto 20px; }
+.number-speaking p { margin: 0; }
+.number-speaking #numberSpeechStatus[data-status="error"] { color: #ff8a8a; font-weight: 800; }
+.number-speaking #numberSpeechStatus[data-status="error"]::before { content: "⚠ "; }
+.number-speaking button[aria-pressed="true"] { outline: 3px solid currentColor; outline-offset: 3px; }
+.number-transcript { display: grid; gap: .5rem; }
+.number-transcript label { font-size: 1rem; font-weight: 600; }
+.number-transcript input { width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: .75rem; background: transparent; color: inherit; padding: .8rem; font-size: 1.5rem; }
+.number-interpretation { display: grid; gap: 3px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel3); padding: 11px 13px; }
+.number-interpretation span,
+.number-interpretation small { color: var(--muted); font-size: .78rem; }
+.number-interpretation strong { font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif; font-size: 1.45rem; }
+.number-interpretation.is-unavailable strong { font-family: inherit; color: var(--muted); font-size: .9rem; }
+.number-typing-modes { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.number-typing-modes > span { font-weight: 700; }
+.number-segmented { display: flex; border: 1px solid var(--line); border-radius: 10px; background: var(--panel3); padding: 3px; }
+.number-segmented button { border: 0; border-radius: 7px; background: transparent; color: var(--muted); padding: 8px 13px; font: inherit; font-weight: 700; cursor: pointer; }
+.number-segmented button[aria-pressed="true"] { outline: 0; background: var(--accent); color: #07111c; }
+.number-submitted-answer { margin-top: 12px !important; color: var(--text); }
 .number-hidden { display: none !important; }
 
 @media (max-width: 850px) {

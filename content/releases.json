@@ -63,6 +63,17 @@
           "text": "Long update histories now use one clean scrollbar in the changelog."
         }
       ]
+    },
+    {
+      "id": "2026-09-09.2",
+      "publishedAt": "2026-09-09",
+      "title": "Speak Japanese numbers",
+      "changes": [
+        {
+          "pages": ["numbers"],
+          "text": "Numbers practice now lets you say a displayed number in Japanese, review the transcript, retry with R, or type the answer in Japanese or romaji."
+        }
+      ]
     }
   ]
 }
