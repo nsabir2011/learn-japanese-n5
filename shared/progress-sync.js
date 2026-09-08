@@ -114,6 +114,7 @@
   function scheduleReload() {
     if (reloadScheduled) return;
     reloadScheduled = true;
+    globalThis.kanaNavigationProgress?.start();
     setTimeout(() => location.reload(), 0);
   }
 

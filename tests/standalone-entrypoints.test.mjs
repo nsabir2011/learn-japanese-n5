@@ -165,6 +165,19 @@ test('vocabulary offers a silent bidirectional written mode', () => {
   assert.match(vocabulary, /\["written", "spoken", "recall", "speaking", "written-both", "mixed"\]/);
 });
 
+test('published entrypoints receive the inline navigation progress bar', () => {
+  const prepareScript = readFileSync(resolve(root, 'scripts/prepare-site-assets.mjs'), 'utf8');
+  const progressScript = readFileSync(resolve(root, 'shared/navigation-progress.js'), 'utf8');
+  const progressStyles = readFileSync(resolve(root, 'shared/navigation-progress.css'), 'utf8');
+
+  assert.match(prepareScript, /navigationProgressHead/);
+  assert.match(prepareScript, /html\.replace\('<head>'/);
+  assert.match(progressScript, /document\.addEventListener\('click'/);
+  assert.match(progressScript, /window\.addEventListener\('pageshow'/);
+  assert.match(progressStyles, /html\.navigation-progress-active::before/);
+  assert.match(progressStyles, /prefers-reduced-motion: reduce/);
+});
+
 test('speaking practice exposes error, kana interpretation, romaji, and post-submit states', () => {
   const vocabulary = readFileSync(resolve(root, 'features/kana/vocabulary.js'), 'utf8');
   const styles = readFileSync(resolve(root, 'features/kana/vocabulary.css'), 'utf8');
