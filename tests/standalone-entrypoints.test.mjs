@@ -194,6 +194,23 @@ test('standalone activity headers separate navigation from cloud status', () => 
   assert.match(trainerStyles, /\.header-sync-status::before/);
 });
 
+test('non-home top rows use the shared Home and Settings navigation', () => {
+  const settings = readFileSync(resolve(root, 'settings.html'), 'utf8');
+  const guided = readFileSync(resolve(root, 'guided/player.html'), 'utf8');
+  const guidedHeader = guided.match(/<header class="lesson-header">([\s\S]*?)<\/header>/)?.[1] || '';
+
+  assert.match(
+    settings,
+    /<div class="header-nav"><a class="ghost header-link-button" href="\.\/index\.html">Home<\/a><\/div>/,
+  );
+  assert.doesNotMatch(settings, /header-link-button" href="\.\/(?:vocabulary|numbers)\.html"/);
+  assert.match(
+    guidedHeader,
+    /<a class="ghost lesson-link-button" href="\.\.\/index\.html">Home<\/a>[\s\S]*<a class="ghost lesson-link-button" href="\.\.\/settings\.html">Settings &amp; Data<\/a>/,
+  );
+  assert.doesNotMatch(guidedHeader, /Guided lessons|Kana Mix/);
+});
+
 test('published entrypoints receive the inline navigation progress bar', () => {
   const prepareScript = readFileSync(resolve(root, 'scripts/prepare-site-assets.mjs'), 'utf8');
   const progressScript = readFileSync(resolve(root, 'shared/navigation-progress.js'), 'utf8');
