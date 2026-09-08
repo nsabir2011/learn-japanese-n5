@@ -72,6 +72,10 @@
         {
           "pages": ["numbers"],
           "text": "Numbers practice now lets you say a displayed number in Japanese, review the transcript, retry with R, or type the answer in Japanese or romaji."
+        },
+        {
+          "pages": ["numbers"],
+          "text": "Pattern mastery can now be expanded when needed and stays compact while you practice."
         }
       ]
     }

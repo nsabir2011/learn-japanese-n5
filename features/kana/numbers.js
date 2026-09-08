@@ -322,7 +322,10 @@
           <div class="number-playback-settings"><label class="toggle-line"><input type="checkbox" id="numberSpeechAuto"> Automatically pronounce revealed readings</label><button class="ghost" id="numberManageVoices" type="button">Manage voices</button></div>
         </div>
       </div>
-      <div class="card" style="margin-top:14px"><h2>Pattern mastery</h2><div class="number-concepts" id="numberConcepts"></div></div>`;
+      <details class="card number-mastery-card">
+        <summary><span><strong>Pattern mastery</strong><small>See progress from single digits through ten-thousands.</small></span></summary>
+        <div class="number-concepts" id="numberConcepts"></div>
+      </details>`;
     const panelAnchor = $("#panel-kanaprogress");
     if (panelAnchor) panelAnchor.before(panel);
     else $(".wrap").appendChild(panel);

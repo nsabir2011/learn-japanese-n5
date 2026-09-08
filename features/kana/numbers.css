@@ -159,7 +159,16 @@
 .number-rescue-options .option.correct { border-color: var(--good); background: rgba(63, 185, 80, .13); }
 .number-rescue-options .option.wrong { border-color: var(--bad); background: rgba(248, 81, 73, .12); }
 .number-rescue-options .option kbd { position: absolute; left: 9px; top: 7px; }
-.number-concepts { display: grid; gap: 8px; margin-top: 12px; }
+.number-mastery-card { margin-top: 14px; padding: 0; overflow: hidden; }
+.number-mastery-card > summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; list-style: none; cursor: pointer; padding: 16px 18px; }
+.number-mastery-card > summary::-webkit-details-marker { display: none; }
+.number-mastery-card > summary::after { content: "+"; color: var(--muted); font-size: 1.25rem; font-weight: 500; }
+.number-mastery-card[open] > summary::after { content: "−"; }
+.number-mastery-card[open] > summary { border-bottom: 1px solid var(--line); }
+.number-mastery-card > summary > span { display: grid; gap: 3px; }
+.number-mastery-card > summary small { color: var(--muted); font-weight: 500; }
+.number-mastery-card > .number-concepts { margin: 0 18px 18px; }
+.number-concepts { display: grid; gap: 8px; }
 
 .number-concept {
   display: grid;

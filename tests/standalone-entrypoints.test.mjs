@@ -291,6 +291,15 @@ test('numbers offers explicit speech recognition with review and typing fallback
   assert.match(styles, /numberSpeechStatus\[data-status="error"\]/);
 });
 
+test('number pattern mastery uses the same collapsible plus and minus pattern as vocabulary', () => {
+  const numbers = readFileSync(resolve(root, 'features/kana/numbers.js'), 'utf8');
+  const styles = readFileSync(resolve(root, 'features/kana/numbers.css'), 'utf8');
+  assert.match(numbers, /<details class="card number-mastery-card">/);
+  assert.match(numbers, /<strong>Pattern mastery<\/strong>/);
+  assert.match(styles, /\.number-mastery-card > summary::after \{ content: "\+"/);
+  assert.match(styles, /\.number-mastery-card\[open\] > summary::after \{ content: "−"/);
+});
+
 test('stylesheet asset references remain valid after source moves', () => {
   for (const stylesheet of stylesheetsWithLocalAssets) {
     const cssPath = resolve(root, stylesheet);
