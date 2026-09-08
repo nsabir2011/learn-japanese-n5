@@ -80,7 +80,7 @@ test('vocabulary choices reveal pronunciation or Japanese text only after answer
   assert.match(vocabulary, /class="vocab-choice-secondary vocab-choice-japanese-secondary" aria-hidden="true">\$\{choice\.jp\}/);
   assert.match(vocabulary, /options\.classList\.add\("is-answered"\)/);
   assert.match(vocabulary, /querySelectorAll\("\.vocab-choice-secondary"\)\.forEach\(detail => detail\.removeAttribute\("aria-hidden"\)\)/);
-  assert.match(styles, /\.vocab-options:not\(\.is-answered\) \.vocab-choice-secondary\{visibility:hidden\}/);
+  assert.match(styles, /\.vocab-options:not\(\.is-answered\) \.vocab-choice-secondary\{display:none\}/);
   assert.match(styles, /\.vocab-choice-japanese-secondary/);
 });
 
