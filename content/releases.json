@@ -11,6 +11,17 @@
           "text": "Practice pages can now let you know when an update is ready and show what changed after reloading."
         }
       ]
+    },
+    {
+      "id": "2026-09-08.2",
+      "publishedAt": "2026-09-08",
+      "title": "More reliable updates",
+      "changes": [
+        {
+          "pages": ["all"],
+          "text": "Update checks now handle double-digit release numbers and brief deployment cache delays reliably."
+        }
+      ]
     }
   ]
 }

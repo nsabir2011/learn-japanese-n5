@@ -49,6 +49,19 @@
     return releases.slice(start + 1, end + 1);
   }
 
+  function isReleaseAfter(manifest, candidateId, referenceId) {
+    const releases = Array.isArray(manifest?.releases) ? manifest.releases : [];
+    const candidate = releaseIndex(releases, candidateId);
+    const reference = releaseIndex(releases, referenceId);
+    return candidate >= 0 && (reference < 0 || candidate > reference);
+  }
+
+  function requireRelease(manifest, releaseId) {
+    if (releaseIndex(manifest.releases, releaseId) < 0) {
+      throw new Error(`Release notes do not include ${releaseId} yet.`);
+    }
+  }
+
   function affectsPage(release) {
     return Array.isArray(release?.changes) && release.changes.some((change) =>
       Array.isArray(change?.pages) &&
@@ -196,6 +209,7 @@
     checkedRemoteReleaseId = latestReleaseId;
     try {
       const manifest = await loadManifest(latestReleaseId);
+      requireRelease(manifest, latestReleaseId);
       const updates = releasesAfter(manifest, currentReleaseId, latestReleaseId);
       if (updates.some(affectsPage)) showBanner(latestReleaseId);
     } catch (error) {
@@ -210,7 +224,7 @@
     const fromReleaseId = pendingFrom || lastLoaded;
     const requestedReleaseId = new URL(location.href).searchParams.get('_release') || '';
 
-    if (!lastLoaded || currentReleaseId > lastLoaded) {
+    if (!lastLoaded) {
       storageSet(localStorage, LAST_LOADED_KEY, currentReleaseId);
     }
 
@@ -220,10 +234,15 @@
       history.replaceState(history.state, '', cleanUrl);
     }
 
-    if (!fromReleaseId || fromReleaseId === currentReleaseId || fromReleaseId > currentReleaseId) return;
+    if (!fromReleaseId || fromReleaseId === currentReleaseId) return;
 
     try {
       const manifest = await loadManifest(currentReleaseId);
+      requireRelease(manifest, currentReleaseId);
+      if (lastLoaded && isReleaseAfter(manifest, currentReleaseId, lastLoaded)) {
+        storageSet(localStorage, LAST_LOADED_KEY, currentReleaseId);
+      }
+      if (!isReleaseAfter(manifest, currentReleaseId, fromReleaseId)) return;
       const updates = releasesAfter(manifest, fromReleaseId, currentReleaseId);
       if (updates.length) {
         storageRemove(sessionStorage, PENDING_FROM_KEY);
