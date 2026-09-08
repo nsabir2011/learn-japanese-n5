@@ -57,6 +57,10 @@
         {
           "pages": ["guided", "home", "settings"],
           "text": "A new visual lesson teaches pointing words, prices, shopping, ownership, locations, restaurant ordering, and classroom survival phrases through connected situations."
+        },
+        {
+          "pages": ["all"],
+          "text": "Long update histories now use one clean scrollbar in the changelog."
         }
       ]
     }

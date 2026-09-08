@@ -87,8 +87,10 @@
 }
 
 .app-changelog {
+  --app-changelog-max-height: min(44rem, calc(100dvh - 2rem));
   width: min(38rem, calc(100vw - 2rem));
-  max-height: min(44rem, calc(100vh - 2rem));
+  max-height: var(--app-changelog-max-height);
+  overflow: hidden;
   padding: 0;
   color: #f0f6fc;
   background: #161b22;
@@ -104,8 +106,9 @@
 }
 
 .app-changelog-inner {
-  overflow: auto;
-  max-height: inherit;
+  overflow-y: auto;
+  max-height: calc(var(--app-changelog-max-height) - 2px);
+  overscroll-behavior: contain;
   padding: clamp(1.25rem, 4vw, 2rem);
 }
 

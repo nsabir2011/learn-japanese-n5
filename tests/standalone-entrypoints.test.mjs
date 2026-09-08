@@ -243,6 +243,8 @@ test('published entrypoints receive release-aware update controls', () => {
   assert.match(updateScript, /kana-sprint-release-observed/);
   assert.match(updateStyles, /\.app-update-banner/);
   assert.match(updateStyles, /\.app-changelog/);
+  assert.match(updateStyles, /\.app-changelog\s*\{[^}]*overflow:\s*hidden/s);
+  assert.match(updateStyles, /\.app-changelog-inner\s*\{[^}]*overflow-y:\s*auto/s);
   assert.match(syncScript, /observeRelease\(cloud\)/);
   assert.match(syncScript, /visibilitychange/);
   assert.match(progressRoute, /releaseId: LATEST_RELEASE_ID/);
