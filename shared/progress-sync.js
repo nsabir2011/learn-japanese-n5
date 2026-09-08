@@ -1,7 +1,19 @@
 (() => {
   'use strict';
 
-  if (!/^https?:$/.test(location.protocol)) return;
+  if (!/^https?:$/.test(location.protocol)) {
+    const showDeviceOnlyStatus = () => {
+      const pill = document.querySelector('.pill');
+      if (!pill) return false;
+      pill.textContent = 'Auto-saved on this device';
+      pill.setAttribute('aria-live', 'polite');
+      return true;
+    };
+    if (!showDeviceOnlyStatus()) {
+      document.addEventListener('DOMContentLoaded', showDeviceOnlyStatus, { once: true });
+    }
+    return;
+  }
 
   const API_URL = '/api/progress';
   const META_KEY = 'kanaSprintCloudSyncV1';

@@ -51,9 +51,12 @@ test('the root launcher links to every learning experience', () => {
 
 test('the root launcher reports live cloud-sync status', () => {
   const html = readFileSync(resolve(root, 'index.html'), 'utf8');
+  const sync = readFileSync(resolve(root, 'shared/progress-sync.js'), 'utf8');
   assert.match(html, /src="\.\/shared\/progress-sync\.js/);
   assert.match(html, /class="status pill">Cloud sync connecting…<\/span>/);
   assert.doesNotMatch(html, /offline-ready/);
+  assert.match(sync, /pill\.textContent = 'Auto-saved on this device'/);
+  assert.match(sync, /DOMContentLoaded', showDeviceOnlyStatus/);
 });
 
 test('the compact Kana Mix icon uses the launcher card class', () => {
