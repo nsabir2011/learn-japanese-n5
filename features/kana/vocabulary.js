@@ -390,11 +390,33 @@
   let typedAnswer = false;
   let typingScript = state.typingScript === "romaji" ? "romaji" : "japanese";
 
+  function updateSpeakingKeyboardHint() {
+    const hint = $("#vocabKeyboardHint");
+    if (!hint || phase !== "question" || currentMode !== "speaking") return;
+    const hasAnswer = Boolean($("#vocabSpeechText")?.value.trim());
+    if (typedAnswer) {
+      hint.innerHTML = hasAnswer
+        ? "Press <kbd>Enter</kbd> to submit your typed answer."
+        : "Type an answer to enable Submit answer.";
+      return;
+    }
+    const messages = {
+      idle: "Press <kbd>Enter</kbd> to start speaking.",
+      starting: "Press <kbd>Enter</kbd> to stop recording.",
+      listening: "Press <kbd>Enter</kbd> to stop recording.",
+      processing: "Finishing transcription…",
+      review: "Press <kbd>Enter</kbd> to submit · <kbd>R</kbd> to try again.",
+      error: "Press <kbd>Enter</kbd> to try again, or type your answer.",
+    };
+    hint.innerHTML = messages[speechStatus] || "";
+  }
+
   function setSpeechStatus(status, message) {
     speechStatus = status;
     const element = $("#vocabSpeechStatus");
     element.dataset.status = status;
     element.textContent = message;
+    updateSpeakingKeyboardHint();
   }
 
   function updateInterpretation(value, visible = true) {
@@ -442,6 +464,7 @@
     $("#vocabSpeechInterpretation").classList.add("hidden");
     $("#vocabSpeechSubmit").disabled = true;
     $("#vocabRecord").textContent = "🎤 Speak";
+    $("#vocabRecord").removeAttribute("aria-keyshortcuts");
     $("#vocabRecord").setAttribute("aria-pressed", "false");
     $("#vocabTypeInstead").textContent = "Type instead";
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -449,13 +472,18 @@
     setSpeechStatus(Recognition ? "idle" : "error", Recognition
       ? "Press Speak when you’re ready. Review your words before submitting."
       : "Speech recognition isn’t available in this browser. Try Chrome or type your answer.");
-    $("#vocabKeyboardHint").innerHTML = "<kbd>Enter</kbd> stops recording; press again after review to submit.";
     if (Recognition) speechSession = Speaking.createSession(Recognition, snapshot => {
       input.value = snapshot.text;
       setSpeechStatus(snapshot.status, snapshot.message);
       updateInterpretation(snapshot.text, snapshot.status === "review");
       const recording = ["starting", "listening", "processing"].includes(speechStatus);
-      $("#vocabRecord").textContent = recording ? (speechStatus === "processing" ? "Processing…" : "Stop recording") : "🎤 Try again";
+      if (speechStatus === "review") {
+        $("#vocabRecord").innerHTML = "🎤 Try again <kbd>R</kbd>";
+        $("#vocabRecord").setAttribute("aria-keyshortcuts", "R");
+      } else {
+        $("#vocabRecord").textContent = recording ? (speechStatus === "processing" ? "Processing…" : "Stop recording") : "🎤 Try again";
+        $("#vocabRecord").removeAttribute("aria-keyshortcuts");
+      }
       $("#vocabRecord").disabled = speechStatus === "processing";
       $("#vocabRecord").setAttribute("aria-pressed", String(recording));
       $("#vocabSpeechSubmit").disabled = speechStatus !== "review" || !snapshot.text.trim();
@@ -995,6 +1023,7 @@
     if (wasSpeakingQuestion) {
       $("#vocabSpeechActions").classList.add("hidden");
       $("#vocabTypingModes").classList.add("hidden");
+      $("#vocabKeyboardHint").innerHTML = "Press <kbd>Enter</kbd> for the next question.";
     }
     const correct = !unknown && selectedId === current.id;
     const selectedWord = !correct && selectedId ? WORDS.find(word => word.id === selectedId) : null;
@@ -1180,18 +1209,19 @@
     speechStatus = "typed";
     $("#vocabRecord").disabled = true;
     $("#vocabRecord").textContent = "🎤 Speak";
+    $("#vocabRecord").removeAttribute("aria-keyshortcuts");
     $("#vocabRecord").setAttribute("aria-pressed", "false");
     $("#vocabTypeInstead").textContent = "Use microphone";
     $("#vocabSpeechText").readOnly = false;
     $("#vocabTypingModes").classList.remove("hidden");
     $("#vocabSpeechInterpretation").classList.add("hidden");
     setTypingScript(typingScript);
-    $("#vocabKeyboardHint").innerHTML = "Press <kbd>Enter</kbd> to submit your typed answer.";
   });
   $("#vocabSpeechText").addEventListener("input", () => {
     if (!typedAnswer) return;
     const value = $("#vocabSpeechText").value;
     $("#vocabSpeechSubmit").disabled = !value.trim();
+    updateSpeakingKeyboardHint();
     if (typingScript === "romaji") {
       $("#vocabRomajiKana").textContent = Speaking.matchesRomaji(current, value) ? current.jp : (Speaking.romajiToHiragana(value) || "—");
     }
@@ -1199,10 +1229,18 @@
   $("#vocabTypeJapanese").addEventListener("click", () => setTypingScript("japanese"));
   $("#vocabTypeRomaji").addEventListener("click", () => setTypingScript("romaji"));
   $("#vocabSpeechSubmit").addEventListener("click", submitSpeaking);
-  // Capture Enter so a focused microphone button cannot restart recording during review.
+  // Capture speaking shortcuts so focused controls cannot trigger a different action.
   document.addEventListener("keydown", event => {
-    if (!$("#panel-vocabulary").classList.contains("active") || phase !== "question" || currentMode !== "speaking" || event.key !== "Enter") return;
+    if (!$("#panel-vocabulary").classList.contains("active") || phase !== "question" || currentMode !== "speaking") return;
     if (event.isComposing || event.keyCode === 229) return;
+    const typingTarget = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement || event.target?.isContentEditable;
+    if (event.key.toLowerCase() === "r" && speechStatus === "review" && !typedAnswer && !typingTarget) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!event.repeat) $("#vocabRecord").click();
+      return;
+    }
+    if (event.key !== "Enter") return;
     if (event.target.closest?.("select,a") || event.target.matches?.("button:not(#vocabRecord):not(#vocabSpeechSubmit)")) return;
     event.preventDefault();
     event.stopImmediatePropagation();

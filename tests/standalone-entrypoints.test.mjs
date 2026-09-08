@@ -218,6 +218,13 @@ test('speaking practice exposes error, kana interpretation, romaji, and post-sub
   assert.match(vocabulary, /id="vocabTypeRomaji"/);
   assert.match(vocabulary, /id="vocabRomajiPreview"/);
   assert.match(vocabulary, /\$\("#vocabSpeechActions"\)\.classList\.add\("hidden"\)/);
+  assert.match(vocabulary, /Press <kbd>Enter<\/kbd> to start speaking/);
+  assert.match(vocabulary, /Press <kbd>Enter<\/kbd> to stop recording/);
+  assert.match(vocabulary, /Press <kbd>Enter<\/kbd> to submit · <kbd>R<\/kbd> to try again/);
+  assert.match(vocabulary, /Try again <kbd>R<\/kbd>/);
+  assert.match(vocabulary, /speechStatus === "review" && !typedAnswer && !typingTarget/);
+  assert.match(vocabulary, /Type an answer to enable Submit answer/);
+  assert.match(vocabulary, /Press <kbd>Enter<\/kbd> for the next question/);
   assert.match(styles, /vocabSpeechStatus\[data-status="error"\]/);
 });
 
