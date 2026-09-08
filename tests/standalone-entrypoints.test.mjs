@@ -175,6 +175,15 @@ test('vocabulary offers a silent bidirectional written mode', () => {
   assert.match(vocabulary, /\["written", "spoken", "recall", "speaking", "written-both", "mixed"\]/);
 });
 
+test('standalone activity headers separate navigation from cloud status', () => {
+  const shell = readFileSync(resolve(root, 'shared/activity-shell.js'), 'utf8');
+  const styles = readFileSync(resolve(root, 'shared/activity-shell.css'), 'utf8');
+  assert.match(shell, /class="header-nav"/);
+  assert.match(shell, /class="pill header-sync-status" role="status"/);
+  assert.match(styles, /\.activity-header \.header-actions\{display:grid;justify-items:end/);
+  assert.match(styles, /\.activity-header \.header-sync-status::before/);
+});
+
 test('published entrypoints receive the inline navigation progress bar', () => {
   const prepareScript = readFileSync(resolve(root, 'scripts/prepare-site-assets.mjs'), 'utf8');
   const progressScript = readFileSync(resolve(root, 'shared/navigation-progress.js'), 'utf8');

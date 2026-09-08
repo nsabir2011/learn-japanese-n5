@@ -31,6 +31,10 @@
         {
           "pages": ["vocabulary"],
           "text": "Speaking practice now explains what Enter will do at each step and lets you press R to record the answer again."
+        },
+        {
+          "pages": ["vocabulary", "numbers"],
+          "text": "Cloud sync status now sits beneath the header navigation so it is easier to distinguish from the page links."
         }
       ]
     }

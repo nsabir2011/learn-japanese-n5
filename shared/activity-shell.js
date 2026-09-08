@@ -8,7 +8,7 @@
   document.body.innerHTML = `<div class="wrap">
     <header class="activity-header">
       <div><p class="activity-eyebrow">Japanese N5 Practice</p><h1>${title}</h1><p class="subtitle">${description}</p></div>
-      <div class="header-actions"><a class="ghost header-link-button" href="./index.html">Home</a><a class="ghost header-link-button" href="./settings.html">Settings &amp; Data</a><span class="pill">Standalone · offline-ready · auto-saved</span></div>
+      <div class="header-actions"><div class="header-nav"><a class="ghost header-link-button" href="./index.html">Home</a><a class="ghost header-link-button" href="./settings.html">Settings &amp; Data</a></div><span class="pill header-sync-status" role="status">Standalone · offline-ready · auto-saved</span></div>
     </header>
     <section class="activity-status" aria-label="Current activity status">
       <div class="activity-status-heading"><span>Current activity</span><strong>${title}</strong><small id="activityStatusNote"></small></div>
