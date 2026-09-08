@@ -787,6 +787,7 @@
     $("#vocabPracticeMode").textContent = `Vocabulary • ${modeLabel(format)}${currentContext ? " in context" : ""}`;
     const options = $("#vocabOptions");
     options.innerHTML = "";
+    options.classList.remove("is-answered");
     const choices = makeChoices(word, format);
     currentChoiceIds = choices.map(choice => choice.id);
     currentChoiceCount = choices.length;
@@ -796,7 +797,9 @@
       const button = document.createElement("button");
       button.className = "vocab-choice";
       button.dataset.id = choice.id;
-      button.innerHTML = recall ? `<span>${index + 1}</span><span class="vocab-choice-japanese"><strong>${choice.jp}</strong><small>${choice.romaji}</small></span>` : `<span>${index + 1}</span><strong>${choice.meaning}</strong>`;
+      button.innerHTML = recall
+        ? `<span>${index + 1}</span><span class="vocab-choice-japanese"><strong>${choice.jp}</strong><small class="vocab-choice-secondary" aria-hidden="true">${choice.romaji}</small></span>`
+        : `<span>${index + 1}</span><span class="vocab-choice-english"><strong>${choice.meaning}</strong><small class="vocab-choice-secondary vocab-choice-japanese-secondary" aria-hidden="true">${choice.jp}</small></span>`;
       button.addEventListener("click", () => answer(choice.id));
       options.appendChild(button);
     });
@@ -866,6 +869,9 @@
     const correct = !unknown && selectedId === current.id;
     const selectedWord = !correct && selectedId ? WORDS.find(word => word.id === selectedId) : null;
     applyResult(correct, selectedId);
+    const options = $("#vocabOptions");
+    options.classList.add("is-answered");
+    options.querySelectorAll(".vocab-choice-secondary").forEach(detail => detail.removeAttribute("aria-hidden"));
     [...$("#vocabOptions").children].forEach(button => {
       button.disabled = true;
       if (button.dataset.id === current.id) button.classList.add("correct");

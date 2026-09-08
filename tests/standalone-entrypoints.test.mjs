@@ -72,6 +72,18 @@ test('vocabulary feedback explains the meaning of a selected wrong choice', () =
   assert.match(styles, /\.vocab-feedback-choice/);
 });
 
+test('vocabulary choices reveal pronunciation or Japanese text only after answering', () => {
+  const vocabulary = readFileSync(resolve(root, 'features/kana/vocabulary.js'), 'utf8');
+  const styles = readFileSync(resolve(root, 'features/kana/vocabulary.css'), 'utf8');
+  assert.match(vocabulary, /options\.classList\.remove\("is-answered"\)/);
+  assert.match(vocabulary, /class="vocab-choice-secondary" aria-hidden="true">\$\{choice\.romaji\}/);
+  assert.match(vocabulary, /class="vocab-choice-secondary vocab-choice-japanese-secondary" aria-hidden="true">\$\{choice\.jp\}/);
+  assert.match(vocabulary, /options\.classList\.add\("is-answered"\)/);
+  assert.match(vocabulary, /querySelectorAll\("\.vocab-choice-secondary"\)\.forEach\(detail => detail\.removeAttribute\("aria-hidden"\)\)/);
+  assert.match(styles, /\.vocab-options:not\(\.is-answered\) \.vocab-choice-secondary\{visibility:hidden\}/);
+  assert.match(styles, /\.vocab-choice-japanese-secondary/);
+});
+
 test('vocabulary scopes separate guided sequencing from all-word practice', () => {
   const vocabulary = readFileSync(resolve(root, 'features/kana/vocabulary.js'), 'utf8');
   assert.match(vocabulary, /adaptive: "Guided course", all: "All vocabulary"/);
