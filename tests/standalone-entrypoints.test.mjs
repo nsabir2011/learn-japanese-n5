@@ -53,7 +53,7 @@ test('the root launcher reports live cloud-sync status', () => {
   const html = readFileSync(resolve(root, 'index.html'), 'utf8');
   const sync = readFileSync(resolve(root, 'shared/progress-sync.js'), 'utf8');
   assert.match(html, /src="\.\/shared\/progress-sync\.js/);
-  assert.match(html, /class="status pill">Cloud sync connecting…<\/span>/);
+  assert.match(html, /class="status pill header-sync-status" role="status">Cloud sync connecting…<\/span>/);
   assert.doesNotMatch(html, /offline-ready/);
   assert.match(sync, /pill\.textContent = 'Auto-saved in this browser'/);
   assert.match(sync, /DOMContentLoaded', showDeviceOnlyStatus/);
@@ -177,11 +177,21 @@ test('vocabulary offers a silent bidirectional written mode', () => {
 
 test('standalone activity headers separate navigation from cloud status', () => {
   const shell = readFileSync(resolve(root, 'shared/activity-shell.js'), 'utf8');
-  const styles = readFileSync(resolve(root, 'shared/activity-shell.css'), 'utf8');
+  const trainer = readFileSync(resolve(root, 'features/kana/trainer.js'), 'utf8');
+  const trainerStyles = readFileSync(resolve(root, 'features/kana/trainer.css'), 'utf8');
+  const home = readFileSync(resolve(root, 'index.html'), 'utf8');
+  const settings = readFileSync(resolve(root, 'settings.html'), 'utf8');
+  const guided = readFileSync(resolve(root, 'guided/player.html'), 'utf8');
   assert.match(shell, /class="header-nav"/);
   assert.match(shell, /class="pill header-sync-status" role="status"/);
-  assert.match(styles, /\.activity-header \.header-actions\{display:grid;justify-items:end/);
-  assert.match(styles, /\.activity-header \.header-sync-status::before/);
+  assert.match(trainer, /headerNav\.className="header-nav"/);
+  assert.match(trainer, /headerPill\.classList\.add\("header-sync-status"\)/);
+  for (const page of [home, settings, guided]) {
+    assert.match(page, /header-sync-status/);
+    assert.match(page, /role="status"/);
+  }
+  assert.match(trainerStyles, /\.header-actions\{display:grid;justify-items:end/);
+  assert.match(trainerStyles, /\.header-sync-status::before/);
 });
 
 test('published entrypoints receive the inline navigation progress bar', () => {
@@ -206,6 +216,7 @@ test('published entrypoints receive release-aware update controls', () => {
   const releases = JSON.parse(readFileSync(resolve(root, 'content/releases.json'), 'utf8'));
 
   assert.ok(releases.releases.length > 0);
+  assert.equal(new Set(releases.releases.map(release => release.id)).size, releases.releases.length);
   assert.match(prepareScript, /data-app-release/);
   assert.match(prepareScript, /pageScopes/);
   assert.match(updateScript, /A new version is ready/);

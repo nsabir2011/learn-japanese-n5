@@ -28,8 +28,13 @@
   settingsLink.className="ghost header-link-button";
   settingsLink.href="./settings.html";
   settingsLink.textContent="Settings & Data";
+  const headerNav=document.createElement("div");
+  headerNav.className="header-nav";
+  headerNav.append(homeLink,settingsLink);
+  headerPill.classList.add("header-sync-status");
+  headerPill.setAttribute("role","status");
   headerPill.replaceWith(headerActions);
-  headerActions.append(homeLink,settingsLink,headerPill);
+  headerActions.append(headerNav,headerPill);
   document.querySelector("#panel-learn .typing-hint").textContent="A likely adjacent-key or reversed-letter typo offers a brief retry. Other mistakes continue to the normal correction flow.";
   document.querySelector("#panel-rehearse .typing-hint").textContent="Likely adjacent-key or reversed-letter typo → brief retry. Otherwise: hard font → standard reference → rescue if still wrong.";
   document.querySelector("#panel-words .typing-hint").textContent="After recognition, the answer, meaning, and a complete romaji spelling guide appear. Press Enter again for the next word.";
