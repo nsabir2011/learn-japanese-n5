@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "releases": [
+    {
+      "id": "2026-09-08.1",
+      "publishedAt": "2026-09-08",
+      "title": "Stay up to date",
+      "changes": [
+        {
+          "pages": ["all"],
+          "text": "Practice pages can now let you know when an update is ready and show what changed after reloading."
+        }
+      ]
+    }
+  ]
+}

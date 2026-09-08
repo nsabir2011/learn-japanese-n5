@@ -5,7 +5,7 @@
     const showDeviceOnlyStatus = () => {
       const pill = document.querySelector('.pill');
       if (!pill) return false;
-      pill.textContent = 'Auto-saved on this device';
+      pill.textContent = 'Auto-saved in this browser';
       pill.setAttribute('aria-live', 'polite');
       return true;
     };
@@ -130,6 +130,13 @@
     setTimeout(() => location.reload(), 0);
   }
 
+  function observeRelease(cloud) {
+    if (typeof cloud?.releaseId !== 'string' || !cloud.releaseId) return;
+    globalThis.dispatchEvent(new CustomEvent('kana-sprint-release-observed', {
+      detail: { releaseId: cloud.releaseId },
+    }));
+  }
+
   function scheduleFlush() {
     if (!cloudAvailable) return;
     clearTimeout(flushTimer);
@@ -167,12 +174,13 @@
       });
       if (response.status === 401) {
         cloudAvailable = false;
-        setStatus('Auto-saved on this device');
+        setStatus('Auto-saved in this browser');
         return;
       }
       if (!response.ok) throw new Error(`Sync failed with status ${response.status}`);
 
       const cloud = await response.json();
+      observeRelease(cloud);
       meta.revision = Number(cloud.revision) || meta.revision;
       for (const [key, sequence] of Object.entries(pendingSnapshot)) {
         if (meta.pending[key] === sequence) delete meta.pending[key];
@@ -199,12 +207,13 @@
       const response = await fetch(API_URL, { headers: { accept: 'application/json' } });
       if (response.status === 401) {
         cloudAvailable = false;
-        setStatus('Auto-saved on this device');
+        setStatus('Auto-saved in this browser');
         return;
       }
       if (!response.ok) throw new Error(`Sync failed with status ${response.status}`);
 
       const cloud = await response.json();
+      observeRelease(cloud);
       const cloudRevision = Number(cloud.revision) || 0;
       const hasPending = Object.keys(meta.pending).length > 0;
       const stores = localStores();
@@ -234,12 +243,15 @@
       }
     } catch (error) {
       console.warn('Cloud progress is unavailable; continuing locally.', error);
-      setStatus('Auto-saved on this device');
+      setStatus('Auto-saved in this browser');
     }
   }
 
   window.addEventListener('online', pull);
   window.addEventListener('focus', pull);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void pull();
+  });
   window.addEventListener('pagehide', () => {
     if (!Object.keys(meta.pending).length || !navigator.sendBeacon) return;
     const stores = localStores();

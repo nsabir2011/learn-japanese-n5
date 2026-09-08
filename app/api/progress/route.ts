@@ -1,11 +1,15 @@
 import { env } from 'cloudflare:workers';
 import { mergeProgressValue } from '@/lib/progress-merge.js';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
+import releaseManifest from '@/content/releases.json';
 
 export const dynamic = 'force-dynamic';
 
 const MAX_BODY_BYTES = 2_000_000;
 const MAX_RECENT_MUTATIONS = 100;
+const LATEST_RELEASE_ID = releaseManifest.releases.at(-1)?.id;
+
+if (!LATEST_RELEASE_ID) throw new Error('content/releases.json needs at least one release.');
 const ALLOWED_STORE_KEYS = new Set([
   'hiragana-sprint-v3',
   'katakana-sprint-v1',
@@ -37,6 +41,7 @@ function parseJson<T>(raw: string, fallback: T): T {
 function publicSnapshot(row: ProgressRow) {
   const entries = parseJson<Stores>(row.stores_json, {});
   return {
+    releaseId: LATEST_RELEASE_ID,
     revision: row.revision,
     updatedAt: row.updated_at,
     stores: Object.fromEntries(
@@ -161,11 +166,13 @@ export async function POST(request: Request) {
 
     if ((result.meta.changes ?? 0) === 1) {
       const response: {
+        releaseId: string;
         revision: number;
         updatedAt: number;
         conflicted: boolean;
         stores?: Record<string, unknown>;
       } = {
+        releaseId: LATEST_RELEASE_ID,
         revision: nextRevision,
         updatedAt: now,
         conflicted,

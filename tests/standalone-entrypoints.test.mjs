@@ -55,7 +55,7 @@ test('the root launcher reports live cloud-sync status', () => {
   assert.match(html, /src="\.\/shared\/progress-sync\.js/);
   assert.match(html, /class="status pill">Cloud sync connecting…<\/span>/);
   assert.doesNotMatch(html, /offline-ready/);
-  assert.match(sync, /pill\.textContent = 'Auto-saved on this device'/);
+  assert.match(sync, /pill\.textContent = 'Auto-saved in this browser'/);
   assert.match(sync, /DOMContentLoaded', showDeviceOnlyStatus/);
 });
 
@@ -186,6 +186,29 @@ test('published entrypoints receive the inline navigation progress bar', () => {
   assert.match(progressScript, /window\.addEventListener\('pageshow'/);
   assert.match(progressStyles, /html\.navigation-progress-active::before/);
   assert.match(progressStyles, /prefers-reduced-motion: reduce/);
+});
+
+test('published entrypoints receive release-aware update controls', () => {
+  const prepareScript = readFileSync(resolve(root, 'scripts/prepare-site-assets.mjs'), 'utf8');
+  const updateScript = readFileSync(resolve(root, 'shared/app-updates.js'), 'utf8');
+  const updateStyles = readFileSync(resolve(root, 'shared/app-updates.css'), 'utf8');
+  const syncScript = readFileSync(resolve(root, 'shared/progress-sync.js'), 'utf8');
+  const progressRoute = readFileSync(resolve(root, 'app/api/progress/route.ts'), 'utf8');
+  const releases = JSON.parse(readFileSync(resolve(root, 'content/releases.json'), 'utf8'));
+
+  assert.ok(releases.releases.length > 0);
+  assert.match(prepareScript, /data-app-release/);
+  assert.match(prepareScript, /pageScopes/);
+  assert.match(updateScript, /A new version is ready/);
+  assert.match(updateScript, /Update & reload/);
+  assert.match(updateScript, /Continue practicing/);
+  assert.match(updateScript, /kana-sprint-release-observed/);
+  assert.match(updateStyles, /\.app-update-banner/);
+  assert.match(updateStyles, /\.app-changelog/);
+  assert.match(syncScript, /observeRelease\(cloud\)/);
+  assert.match(syncScript, /visibilitychange/);
+  assert.match(progressRoute, /releaseId: LATEST_RELEASE_ID/);
+  assert.doesNotMatch(updateScript, /setInterval/);
 });
 
 test('speaking practice exposes error, kana interpretation, romaji, and post-submit states', () => {

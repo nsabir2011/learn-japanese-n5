@@ -1,0 +1,212 @@
+.app-update-banner {
+  position: fixed;
+  z-index: 10000;
+  top: max(0.75rem, env(safe-area-inset-top));
+  right: max(0.75rem, env(safe-area-inset-right));
+  display: flex;
+  max-width: min(34rem, calc(100vw - 1.5rem));
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem 0.85rem 0.75rem 1rem;
+  color: #f0f6fc;
+  background: rgba(22, 27, 34, 0.98);
+  border: 1px solid #465363;
+  border-radius: 0.9rem;
+  box-shadow: 0 1rem 2.8rem rgba(0, 0, 0, 0.42);
+  font: 500 0.94rem/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.app-update-banner-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.app-update-banner-copy strong,
+.app-update-banner-copy span {
+  display: block;
+}
+
+.app-update-banner-copy strong {
+  margin-bottom: 0.12rem;
+  font-size: 1rem;
+}
+
+.app-update-banner-copy span {
+  color: #b8c3cf;
+}
+
+.app-update-banner-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.app-update-button {
+  min-height: 2.55rem;
+  padding: 0.55rem 0.85rem;
+  color: #ffffff;
+  background: #1d4ed8;
+  border: 1px solid #1d4ed8;
+  border-radius: 0.68rem;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.app-update-button:hover {
+  background: #1e40af;
+  border-color: #1e40af;
+}
+
+.app-update-later {
+  min-height: 2.55rem;
+  padding: 0.55rem 0.7rem;
+  color: #b8c3cf;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.68rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-update-later:hover {
+  color: #f0f6fc;
+  background: #27303b;
+}
+
+.app-update-button:focus-visible,
+.app-update-later:focus-visible,
+.app-changelog-close:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.38);
+  outline-offset: 2px;
+}
+
+.app-changelog {
+  width: min(38rem, calc(100vw - 2rem));
+  max-height: min(44rem, calc(100vh - 2rem));
+  padding: 0;
+  color: #f0f6fc;
+  background: #161b22;
+  border: 1px solid #465363;
+  border-radius: 1.1rem;
+  box-shadow: 0 1.5rem 4rem rgba(15, 23, 42, 0.3);
+  font: 400 1rem/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.app-changelog::backdrop {
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.app-changelog-inner {
+  overflow: auto;
+  max-height: inherit;
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+.app-changelog-eyebrow {
+  margin: 0 0 0.3rem;
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-changelog h2 {
+  margin: 0;
+  font-size: clamp(1.55rem, 5vw, 2rem);
+  line-height: 1.15;
+}
+
+.app-changelog-intro {
+  margin: 0.55rem 0 1.45rem;
+  color: #b8c3cf;
+}
+
+.app-changelog-release + .app-changelog-release {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #30363d;
+}
+
+.app-changelog-release h3 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.app-changelog-date {
+  display: block;
+  margin-top: 0.1rem;
+  color: #9da7b3;
+  font-size: 0.84rem;
+}
+
+.app-changelog-release ul {
+  margin: 0.7rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.app-changelog-release li + li {
+  margin-top: 0.42rem;
+}
+
+.app-changelog-scope {
+  display: inline-block;
+  margin-right: 0.38rem;
+  padding: 0.08rem 0.42rem;
+  color: #c9e2ff;
+  background: rgba(88, 166, 255, 0.13);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 750;
+  vertical-align: 0.08rem;
+}
+
+.app-changelog-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.7rem;
+}
+
+.app-changelog-close {
+  min-height: 2.75rem;
+  padding: 0.62rem 1rem;
+  color: #ffffff;
+  background: #1d4ed8;
+  border: 1px solid #1d4ed8;
+  border-radius: 0.7rem;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .app-update-banner {
+    right: 0.6rem;
+    left: 0.6rem;
+    max-width: none;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .app-update-banner-actions {
+    justify-content: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-update-banner {
+    animation: app-update-arrive 180ms ease-out both;
+  }
+
+  @keyframes app-update-arrive {
+    from {
+      opacity: 0;
+      transform: translateY(-0.5rem);
+    }
+  }
+}
