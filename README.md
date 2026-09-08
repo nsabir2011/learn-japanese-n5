@@ -18,8 +18,9 @@ No installation or web server is needed. Open `index.html` for the activity laun
 - `katakana_sprint.html`
 - `kana_sprint.html`
 - `guided/player.html?lesson=1`
+- `guided/player.html?lesson=2`
 
-The root launcher links directly to each guided lesson. `guided/player.html?lesson=1` loads Lesson 1 in the reusable lesson player.
+The root launcher links directly to each guided lesson. The lesson query selects the curriculum loaded by the reusable guided player.
 
 Keep the repository folders together. The standalone pages load their scripts, lesson content, fonts, and assets through relative paths.
 
@@ -84,7 +85,9 @@ The number scheduler tracks patterns rather than memorizing individual generated
 
 ### Guided lessons
 
-`index.html` presents the available guided lessons, while `guided/player.html?lesson=1` loads Lesson 1 in the shared lesson player. Lesson 1 turns beginner vocabulary and grammar into a cumulative first-conversation journey with eight stages organized by learning purpose rather than textbook page order: situational greetings; introductions; useful school, work, nationality, and major vocabulary; questions; natural names and titles; noun relationships with `の`; family, age, time, and telephone details; and a mixed conversation mission.
+`index.html` presents the available guided lessons. Lesson 1 turns beginner vocabulary and grammar into a cumulative first-conversation journey with eight stages organized by learning purpose rather than textbook page order: situational greetings; introductions; useful school, work, nationality, and major vocabulary; questions; natural names and titles; noun relationships with `の`; family, age, time, and telephone details; and a mixed conversation mission.
+
+Lesson 2 follows a visual day-out journey. Its ten stages change viewpoints while teaching `これ／それ／あれ`, attach nouns with `この／その／あの`, build and hear prices, complete a flea-market purchase, locate places, return lost property, distinguish `ね` from `よ`, order lunch, use classroom repair phrases, and finish with linked conversation missions.
 
 Each idea moves from a concise model to retrieval through situational choices, audio-only comprehension, sentence construction, error repair, typed numeric details, and a mixed checkpoint. Expandable examples explain both the full sentence meaning and each meaningful piece. Practice draws from curated concept families across settings such as orientation, clubs, dorms, libraries, and language exchanges; recent families, prompt variants, and scenarios are temporarily excluded. A delayed recovery changes both the example and its setting when another suitable scenario is available. Checkpoints sample distinct concept families for broader transfer. Correct recall expands the next review interval from minutes to days and weeks; a lapse schedules a near-term related example without immediately repeating the same prompt.
 

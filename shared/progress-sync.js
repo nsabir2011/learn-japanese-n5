@@ -24,6 +24,7 @@
     'kanaSprintNumbersV1',
     'kanaSprintVocabularyV1',
     'kanaSprintGuidedLessonsV1',
+    'kanaSprintGuidedLesson2V1',
     'kanaSprintSpeechV1',
   ];
   const monitored = new Set(STORE_KEYS);

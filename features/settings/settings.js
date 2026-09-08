@@ -10,6 +10,7 @@
     kanaSprintVocabularyV1: { label: "Vocabulary", version: 1 },
     kanaSprintNumbersV1: { label: "Numbers", version: 1 },
     kanaSprintGuidedLessonsV1: { label: "Guided lessons", version: 1 },
+    kanaSprintGuidedLesson2V1: { label: "Guided Lesson 2", version: 1 },
     kanaSprintSpeechV1: { label: "Speech & voices", version: 1 }
   };
   const $ = selector => document.querySelector(selector);
@@ -38,7 +39,7 @@
       const patterns = Object.values(value.concepts || {}).filter(item => item.seen > 0).length;
       return `${value.total || 0} answers · ${patterns} patterns assessed`;
     }
-    if (key === "kanaSprintGuidedLessonsV1") {
+    if (key === "kanaSprintGuidedLessonsV1" || key === "kanaSprintGuidedLesson2V1") {
       const completed = Object.values(value.activities || {}).filter(item => item.completed).length;
       return `${value.total || 0} answers · ${completed} activities completed`;
     }

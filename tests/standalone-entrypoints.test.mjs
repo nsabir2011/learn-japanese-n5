@@ -44,6 +44,7 @@ test('the root launcher links to every learning experience', () => {
     './numbers.html',
     './settings.html',
     './guided/player.html?lesson=1',
+    './guided/player.html?lesson=2',
   ]) {
     assert.ok(html.includes(`href="${target}"`), `root launcher does not link to ${target}`);
   }
@@ -293,5 +294,6 @@ test('frontend implementation is separated into features and content', () => {
   assert.ok(existsSync(resolve(root, 'features/guided/player.js')));
   assert.ok(existsSync(resolve(root, 'content/kana/hiragana.js')));
   assert.ok(existsSync(resolve(root, 'content/guided/lesson-01.js')));
+  assert.ok(existsSync(resolve(root, 'content/guided/lesson-02.js')));
   assert.ok(!existsSync(resolve(root, 'lessons')));
 });

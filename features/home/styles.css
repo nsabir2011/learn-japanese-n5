@@ -51,9 +51,13 @@ section + section { margin-top: 44px; }
 .activity-copy strong { font-size: 1.15rem; }
 .activity-copy > span { min-height: 3em; color: var(--muted); line-height: 1.5; }
 .card-action { align-self: end; margin-top: 24px; color: #b9dcff; font-size: .88rem; font-weight: 800; }
-.guided-section { padding-top: 4px; }
+.guided-section { display: grid; gap: 12px; padding-top: 4px; }
+.guided-section .section-heading { margin-bottom: 14px; }
 .lesson-card { grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 22px; background: linear-gradient(110deg, rgba(163,113,247,.15), transparent 45%), linear-gradient(145deg, rgba(28,36,48,.96), rgba(22,27,34,.96)); }
 .lesson-card:hover { background: linear-gradient(110deg, rgba(163,113,247,.21), transparent 45%), linear-gradient(145deg, #202a37, #181e27); }
+.lesson-card-shopping { background: linear-gradient(110deg, rgba(240,173,78,.14), transparent 45%), linear-gradient(145deg, rgba(28,36,48,.96), rgba(22,27,34,.96)); }
+.lesson-card-shopping:hover { background: linear-gradient(110deg, rgba(240,173,78,.2), transparent 45%), linear-gradient(145deg, #202a37, #181e27); }
+.lesson-card-shopping .lesson-number { border-color: rgba(240,173,78,.5); background: rgba(240,173,78,.1); color: #ffd28f; }
 .lesson-number { display: grid; place-items: center; width: 66px; height: 66px; border: 1px solid rgba(163,113,247,.5); border-radius: 18px; background: rgba(163,113,247,.1); color: #d2baff; font-size: 1.35rem; font-weight: 900; }
 .lesson-card .activity-copy > span { min-height: 0; }
 .lesson-card .card-action { margin: 0; white-space: nowrap; }

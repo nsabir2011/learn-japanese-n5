@@ -48,6 +48,17 @@
           "text": "Update notices and changelogs now match the trainer's colors, typography, buttons, and visual depth."
         }
       ]
+    },
+    {
+      "id": "2026-09-09.1",
+      "publishedAt": "2026-09-09",
+      "title": "Lesson 2: A Day Out",
+      "changes": [
+        {
+          "pages": ["guided", "home", "settings"],
+          "text": "A new visual lesson teaches pointing words, prices, shopping, ownership, locations, restaurant ordering, and classroom survival phrases through connected situations."
+        }
+      ]
     }
   ]
 }
