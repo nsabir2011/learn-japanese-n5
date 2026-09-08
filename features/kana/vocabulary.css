@@ -36,3 +36,8 @@
 .vocab-transcript label { font-size: 1rem; font-weight: 600; }
 .vocab-transcript input { width: 100%; box-sizing: border-box; font-size: 1.5rem; padding: .8rem; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: .75rem; }
 .vocab-speaking button[aria-pressed="true"] { outline: 3px solid currentColor; outline-offset: 3px; }
+.vocab-speaking #vocabSpeechStatus[data-status="error"] { color:#ff8a8a; font-weight:800; }
+.vocab-speaking #vocabSpeechStatus[data-status="error"]::before { content:"⚠ "; }
+.vocab-interpretation,.vocab-romaji-preview{display:grid;gap:3px;border:1px solid var(--line);border-radius:11px;background:var(--panel3);padding:11px 13px}
+.vocab-interpretation span,.vocab-interpretation small,.vocab-romaji-preview span{color:var(--muted);font-size:.78rem}.vocab-interpretation strong,.vocab-romaji-preview strong{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif;font-size:1.45rem}.vocab-interpretation.is-unavailable strong{font-family:inherit;font-size:.9rem;color:var(--muted)}
+.vocab-typing-modes{display:flex;align-items:center;justify-content:space-between;gap:12px}.vocab-typing-modes>span{font-weight:700}.vocab-segmented{display:flex;border:1px solid var(--line);border-radius:10px;padding:3px;background:var(--panel3)}.vocab-segmented button{border:0;border-radius:7px;background:transparent;color:var(--muted);padding:8px 13px;font:inherit;font-weight:700;cursor:pointer}.vocab-segmented button[aria-pressed="true"]{outline:0;background:var(--accent);color:#07111c}

@@ -388,6 +388,38 @@
   let speechSession = null;
   let speechStatus = "idle";
   let typedAnswer = false;
+  let typingScript = state.typingScript === "romaji" ? "romaji" : "japanese";
+
+  function setSpeechStatus(status, message) {
+    speechStatus = status;
+    const element = $("#vocabSpeechStatus");
+    element.dataset.status = status;
+    element.textContent = message;
+  }
+
+  function updateInterpretation(value, visible = true) {
+    const interpreted = Speaking.interpretation(WORDS, value);
+    $("#vocabSpeechKana").textContent = interpreted || "Kana interpretation unavailable";
+    $("#vocabSpeechInterpretation").classList.toggle("hidden", !visible);
+    $("#vocabSpeechInterpretation").classList.toggle("is-unavailable", !interpreted);
+  }
+
+  function setTypingScript(script) {
+    typingScript = script === "romaji" ? "romaji" : "japanese";
+    state.typingScript = typingScript;
+    $("#vocabTypeJapanese").setAttribute("aria-pressed", String(typingScript === "japanese"));
+    $("#vocabTypeRomaji").setAttribute("aria-pressed", String(typingScript === "romaji"));
+    const input = $("#vocabSpeechText");
+    input.lang = typingScript === "romaji" ? "en" : "ja";
+    input.placeholder = typingScript === "romaji" ? "Type romaji, for example mizu" : "Type kana or kanji";
+    $("#vocabSpeechTextLabel").textContent = typingScript === "romaji" ? "Your romaji answer" : "Your Japanese answer";
+    $("#vocabRomajiPreview").classList.toggle("hidden", typingScript !== "romaji");
+    input.value = "";
+    $("#vocabRomajiKana").textContent = "—";
+    $("#vocabSpeechSubmit").disabled = true;
+    if (typedAnswer) setSpeechStatus("typed", typingScript === "romaji" ? "Type in romaji. Check the kana preview, then submit." : "Type in Japanese, then submit.");
+    input.focus();
+  }
 
   function stopSpeaking() {
     speechSession?.cancel();
@@ -400,22 +432,28 @@
     const input = $("#vocabSpeechText");
     input.value = "";
     input.readOnly = true;
+    input.lang = "ja";
+    input.placeholder = "Your browser transcript will appear here";
     $("#vocabSpeechTextLabel").textContent = "We heard";
     $("#vocabSpeaking").querySelectorAll("button,input").forEach(control => { control.disabled = false; });
+    $("#vocabSpeechActions").classList.remove("hidden");
+    $("#vocabTypingModes").classList.add("hidden");
+    $("#vocabRomajiPreview").classList.add("hidden");
+    $("#vocabSpeechInterpretation").classList.add("hidden");
     $("#vocabSpeechSubmit").disabled = true;
     $("#vocabRecord").textContent = "🎤 Speak";
     $("#vocabRecord").setAttribute("aria-pressed", "false");
     $("#vocabTypeInstead").textContent = "Type instead";
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     $("#vocabRecord").disabled = !Recognition;
-    $("#vocabSpeechStatus").textContent = Recognition
+    setSpeechStatus(Recognition ? "idle" : "error", Recognition
       ? "Press Speak when you’re ready. Review your words before submitting."
-      : "Speech recognition isn’t available in this browser. Try Chrome or type your answer.";
+      : "Speech recognition isn’t available in this browser. Try Chrome or type your answer.");
     $("#vocabKeyboardHint").innerHTML = "<kbd>Enter</kbd> stops recording; press again after review to submit.";
     if (Recognition) speechSession = Speaking.createSession(Recognition, snapshot => {
-      speechStatus = snapshot.status;
       input.value = snapshot.text;
-      $("#vocabSpeechStatus").textContent = snapshot.message;
+      setSpeechStatus(snapshot.status, snapshot.message);
+      updateInterpretation(snapshot.text, snapshot.status === "review");
       const recording = ["starting", "listening", "processing"].includes(speechStatus);
       $("#vocabRecord").textContent = recording ? (speechStatus === "processing" ? "Processing…" : "Stop recording") : "🎤 Try again";
       $("#vocabRecord").disabled = speechStatus === "processing";
@@ -427,13 +465,15 @@
   function submitSpeaking() {
     if (phase !== "question" || currentMode !== "speaking" || $("#vocabSpeechSubmit").disabled) return;
     const transcript = $("#vocabSpeechText").value.trim();
-    const correct = Speaking.matches(current, transcript);
+    const correct = typedAnswer && typingScript === "romaji" ? Speaking.matchesRomaji(current, transcript) : Speaking.matches(current, transcript);
     // Typed fallback shares recall statistics, but never increases speaking mastery.
     if (typedAnswer) currentMode = "recall";
     const progress = itemState(current);
     const attemptType = typedAnswer ? "typed" : "speech";
     progress.inputAttempts ||= {};
     progress.inputAttempts[attemptType] = (Number(progress.inputAttempts[attemptType]) || 0) + 1;
+    $("#vocabSpeechActions").classList.add("hidden");
+    $("#vocabTypingModes").classList.add("hidden");
     answer(correct ? current.id : "");
     const submitted = document.createElement("p");
     submitted.textContent = `${typedAnswer ? "Typed answer" : "You said"}: ${transcript}`;
@@ -658,7 +698,10 @@
           <div class="vocab-speaking hidden" id="vocabSpeaking">
             <p id="vocabSpeechStatus" role="status" aria-live="polite"></p>
             <div class="vocab-transcript"><label for="vocabSpeechText" id="vocabSpeechTextLabel">We heard</label><input id="vocabSpeechText" lang="ja" readonly autocomplete="off" placeholder="Your Japanese words will appear here" aria-describedby="vocabSpeechStatus"></div>
-            <div class="actions"><button class="big-button" id="vocabRecord" type="button">🎤 Speak</button><button class="ghost" id="vocabTypeInstead" type="button">Type instead</button><button class="big-button" id="vocabSpeechSubmit" type="button" disabled>Submit answer</button></div>
+            <div class="vocab-interpretation hidden" id="vocabSpeechInterpretation"><span>Interpreted as</span><strong id="vocabSpeechKana" lang="ja"></strong><small>Browser transcript is shown above.</small></div>
+            <div class="vocab-typing-modes hidden" id="vocabTypingModes" aria-label="Typing script"><span>Type with</span><div class="vocab-segmented"><button id="vocabTypeJapanese" type="button" aria-pressed="true">Japanese</button><button id="vocabTypeRomaji" type="button" aria-pressed="false">Romaji</button></div></div>
+            <div class="vocab-romaji-preview hidden" id="vocabRomajiPreview"><span>Kana preview</span><strong id="vocabRomajiKana" lang="ja">—</strong></div>
+            <div class="actions" id="vocabSpeechActions"><button class="big-button" id="vocabRecord" type="button">🎤 Speak</button><button class="ghost" id="vocabTypeInstead" type="button">Type instead</button><button class="big-button" id="vocabSpeechSubmit" type="button" disabled>Submit answer</button></div>
             <p class="tiny">Your browser may send audio to its speech service. Recognition retries don’t affect your streak. This checks word recall, not pronunciation quality.</p>
           </div>
           <div class="feedback" id="vocabFeedback"></div>
@@ -939,10 +982,15 @@
 
   function answer(selectedId, unknown = false) {
     if (phase !== "question" || !current) return;
+    const wasSpeakingQuestion = !$("#vocabSpeaking").classList.contains("hidden");
     stopSpeaking();
     if (currentMode === "speaking" && typedAnswer) currentMode = "recall";
     phase = "answered";
     $("#vocabSpeaking").querySelectorAll("button,input").forEach(control => { control.disabled = true; });
+    if (wasSpeakingQuestion) {
+      $("#vocabSpeechActions").classList.add("hidden");
+      $("#vocabTypingModes").classList.add("hidden");
+    }
     const correct = !unknown && selectedId === current.id;
     const selectedWord = !correct && selectedId ? WORDS.find(word => word.id === selectedId) : null;
     applyResult(correct, selectedId);
@@ -1129,17 +1177,22 @@
     $("#vocabRecord").textContent = "🎤 Speak";
     $("#vocabRecord").setAttribute("aria-pressed", "false");
     $("#vocabTypeInstead").textContent = "Use microphone";
-    $("#vocabSpeechTextLabel").textContent = "Your Japanese answer";
     $("#vocabSpeechText").readOnly = false;
-    $("#vocabSpeechText").value = "";
-    $("#vocabSpeechSubmit").disabled = true;
-    $("#vocabSpeechStatus").textContent = "Type in Japanese (kana or kanji). This counts as a typed recall attempt.";
+    $("#vocabTypingModes").classList.remove("hidden");
+    $("#vocabSpeechInterpretation").classList.add("hidden");
+    setTypingScript(typingScript);
     $("#vocabKeyboardHint").innerHTML = "Press <kbd>Enter</kbd> to submit your typed answer.";
-    $("#vocabSpeechText").focus();
   });
   $("#vocabSpeechText").addEventListener("input", () => {
-    if (typedAnswer) $("#vocabSpeechSubmit").disabled = !$("#vocabSpeechText").value.trim();
+    if (!typedAnswer) return;
+    const value = $("#vocabSpeechText").value;
+    $("#vocabSpeechSubmit").disabled = !value.trim();
+    if (typingScript === "romaji") {
+      $("#vocabRomajiKana").textContent = Speaking.matchesRomaji(current, value) ? current.jp : (Speaking.romajiToHiragana(value) || "—");
+    }
   });
+  $("#vocabTypeJapanese").addEventListener("click", () => setTypingScript("japanese"));
+  $("#vocabTypeRomaji").addEventListener("click", () => setTypingScript("romaji"));
   $("#vocabSpeechSubmit").addEventListener("click", submitSpeaking);
   // Capture Enter so a focused microphone button cannot restart recording during review.
   document.addEventListener("keydown", event => {

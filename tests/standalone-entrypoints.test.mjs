@@ -165,6 +165,16 @@ test('vocabulary offers a silent bidirectional written mode', () => {
   assert.match(vocabulary, /\["written", "spoken", "recall", "speaking", "written-both", "mixed"\]/);
 });
 
+test('speaking practice exposes error, kana interpretation, romaji, and post-submit states', () => {
+  const vocabulary = readFileSync(resolve(root, 'features/kana/vocabulary.js'), 'utf8');
+  const styles = readFileSync(resolve(root, 'features/kana/vocabulary.css'), 'utf8');
+  assert.match(vocabulary, /id="vocabSpeechInterpretation"/);
+  assert.match(vocabulary, /id="vocabTypeRomaji"/);
+  assert.match(vocabulary, /id="vocabRomajiPreview"/);
+  assert.match(vocabulary, /\$\("#vocabSpeechActions"\)\.classList\.add\("hidden"\)/);
+  assert.match(styles, /vocabSpeechStatus\[data-status="error"\]/);
+});
+
 test('stylesheet asset references remain valid after source moves', () => {
   for (const stylesheet of stylesheetsWithLocalAssets) {
     const cssPath = resolve(root, stylesheet);

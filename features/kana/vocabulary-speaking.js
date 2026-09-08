@@ -37,6 +37,71 @@
     return Boolean(input) && accepted.some(value => normalize(value) === input);
   }
 
+  const romajiPairs = {
+    kya: "きゃ", kyu: "きゅ", kyo: "きょ", sha: "しゃ", shu: "しゅ", sho: "しょ", cha: "ちゃ", chu: "ちゅ", cho: "ちょ",
+    nya: "にゃ", nyu: "にゅ", nyo: "にょ", hya: "ひゃ", hyu: "ひゅ", hyo: "ひょ", mya: "みゃ", myu: "みゅ", myo: "みょ",
+    rya: "りゃ", ryu: "りゅ", ryo: "りょ", gya: "ぎゃ", gyu: "ぎゅ", gyo: "ぎょ", ja: "じゃ", ju: "じゅ", jo: "じょ",
+    bya: "びゃ", byu: "びゅ", byo: "びょ", pya: "ぴゃ", pyu: "ぴゅ", pyo: "ぴょ", shi: "し", chi: "ち", tsu: "つ", fu: "ふ",
+    ka: "か", ki: "き", ku: "く", ke: "け", ko: "こ", sa: "さ", su: "す", se: "せ", so: "そ", ta: "た", te: "て", to: "と",
+    na: "な", ni: "に", nu: "ぬ", ne: "ね", no: "の", ha: "は", hi: "ひ", he: "へ", ho: "ほ", ma: "ま", mi: "み", mu: "む", me: "め", mo: "も",
+    ya: "や", yu: "ゆ", yo: "よ", ra: "ら", ri: "り", ru: "る", re: "れ", ro: "ろ", wa: "わ", wo: "を",
+    ga: "が", gi: "ぎ", gu: "ぐ", ge: "げ", go: "ご", za: "ざ", ji: "じ", zu: "ず", ze: "ぜ", zo: "ぞ",
+    da: "だ", de: "で", do: "ど", ba: "ば", bi: "び", bu: "ぶ", be: "べ", bo: "ぼ", pa: "ぱ", pi: "ぴ", pu: "ぷ", pe: "ぺ", po: "ぽ",
+    a: "あ", i: "い", u: "う", e: "え", o: "お"
+  };
+  function normalizeRomaji(value) {
+    return String(value).normalize("NFKC").toLowerCase()
+      .replaceAll("ā", "aa").replaceAll("ī", "ii").replaceAll("ū", "uu").replaceAll("ē", "ee").replaceAll("ō", "ou")
+      .replace(/[^a-z]/g, "");
+  }
+  function romajiToHiragana(value) {
+    const input = String(value).normalize("NFKC").toLowerCase()
+      .replaceAll("ā", "aa").replaceAll("ī", "ii").replaceAll("ū", "uu").replaceAll("ē", "ee").replaceAll("ō", "ou");
+    let output = "";
+    for (let index = 0; index < input.length;) {
+      const char = input[index];
+      if (/[^a-z]/.test(char)) { index++; continue; }
+      if (char !== "n" && char === input[index + 1] && /[bcdfghjklmpqrstvwxyz]/.test(char)) {
+        output += "っ";
+        index++;
+        continue;
+      }
+      if (char === "n" && input[index + 1] === "n" && /[aiueoy]/.test(input[index + 2] || "")) {
+        output += "ん";
+        index++;
+        continue;
+      }
+      if (char === "n" && (index === input.length - 1 || input[index + 1] === "'" || (!/[aiueoy]/.test(input[index + 1]) && input[index + 1] !== "n"))) {
+        output += "ん";
+        index += input[index + 1] === "'" ? 2 : 1;
+        continue;
+      }
+      let found = false;
+      for (const length of [3, 2, 1]) {
+        const kana = romajiPairs[input.slice(index, index + length)];
+        if (!kana) continue;
+        output += kana;
+        index += length;
+        found = true;
+        break;
+      }
+      if (!found) { output += char; index++; }
+    }
+    return output;
+  }
+  function matchesRomaji(word, value) {
+    return Boolean(normalizeRomaji(value)) && normalizeRomaji(value) === normalizeRomaji(word.romaji);
+  }
+  function interpretation(words, transcript) {
+    const known = words.find(word => matches(word, transcript));
+    if (known) return known.jp;
+    const raw = String(transcript).normalize("NFKC").trim();
+    if (/^[\u3040-\u30ffー\s、。！？]+$/.test(raw)) {
+      return raw.replace(/[\u30a1-\u30f6]/g, char => String.fromCharCode(char.charCodeAt(0) - 0x60));
+    }
+    return "";
+  }
+
   // A new instance per attempt prevents late callbacks from changing another question.
   function createSession(Recognition, update) {
     let active = null;
@@ -113,5 +178,5 @@
     }
     return { start, stop, cancel };
   }
-  globalThis.KANA_SPRINT_VOCABULARY_SPEAKING = { normalize, matches, createSession };
+  globalThis.KANA_SPRINT_VOCABULARY_SPEAKING = { normalize, matches, matchesRomaji, romajiToHiragana, interpretation, createSession };
 })();

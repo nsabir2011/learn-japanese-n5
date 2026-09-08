@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 await import('../features/kana/vocabulary-speaking.js');
-const { matches, createSession } = globalThis.KANA_SPRINT_VOCABULARY_SPEAKING;
+const { matches, matchesRomaji, romajiToHiragana, interpretation, createSession } = globalThis.KANA_SPRINT_VOCABULARY_SPEAKING;
 
 test('speaking accepts kana, kanji, width and punctuation variants without fuzzy matches', () => {
   const word = { id: 'mizu', jp: 'みず' };
@@ -11,6 +11,28 @@ test('speaking accepts kana, kanji, width and punctuation variants without fuzzy
   assert.equal(matches({ id: 'suffix-en', jp: '～えん' }, '円'), true);
   assert.equal(matches({ id: 'ichiji', jp: 'いちじ' }, '１時'), true);
   assert.equal(matches({ id: 'arigatou-gozaimasu', jp: 'ありがとうございます' }, 'ありがとう'), false);
+});
+
+test('romaji typing matches exact vocabulary answers and previews kana', () => {
+  assert.equal(matchesRomaji({ romaji: 'mizu' }, ' MIZU '), true);
+  assert.equal(matchesRomaji({ romaji: 'arigatou gozaimasu' }, 'arigatou-gozaimasu'), true);
+  assert.equal(matchesRomaji({ romaji: 'mizu' }, 'miso'), false);
+  assert.equal(romajiToHiragana('mizu'), 'みず');
+  assert.equal(romajiToHiragana('kitte'), 'きって');
+  assert.equal(romajiToHiragana("kon'nichiha"), 'こんにちは');
+  // Generic conversion stays phonetic; the UI swaps a complete known answer to its canonical spelling.
+  assert.equal(romajiToHiragana('konnichiwa'), 'こんにちわ');
+});
+
+test('speech interpretation shows canonical kana for known kanji transcripts', () => {
+  const words = [
+    { id: 'mizu', jp: 'みず', romaji: 'mizu' },
+    { id: 'amerika', jp: 'アメリカ', romaji: 'amerika' },
+  ];
+  assert.equal(interpretation(words, '水'), 'みず');
+  assert.equal(interpretation(words, 'アメリカ'), 'アメリカ');
+  assert.equal(interpretation(words, 'ミズ'), 'みず');
+  assert.equal(interpretation(words, '未知語'), '');
 });
 
 class Recognition {
