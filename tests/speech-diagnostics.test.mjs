@@ -25,7 +25,7 @@ test('diagnostics save only correct resolution chains with useful retry evidence
   Diagnostics.addAttempt(speechRecovery, { attemptId: 'b', outcome: 'accepted', transcript: '私の専攻です', confidence: .9 });
   assert.equal(Diagnostics.resolve(speechRecovery, 'speech-correct', { storage, now: 5000 }), true);
 
-  const typedRecovery = Diagnostics.begin({ activity: 'vocabulary', targetId: 'suffix-go', expected: 'にほんご', promptStyle: 'context' }, 6000);
+  const typedRecovery = Diagnostics.begin({ activity: 'vocabulary', targetId: 'suffix-go', expected: 'にほんご', promptStyle: 'suffix-context' }, 6000);
   Diagnostics.addAttempt(typedRecovery, { attemptId: 'c', outcome: 'mismatch', transcript: '日本後' });
   assert.equal(Diagnostics.resolve(typedRecovery, 'typed-correct', { storage, now: 7000 }), true);
 

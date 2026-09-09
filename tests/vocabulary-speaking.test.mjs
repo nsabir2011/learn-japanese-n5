@@ -13,15 +13,20 @@ test('speaking accepts kana, kanji, width and punctuation variants without fuzzy
   assert.equal(matches({ id: 'arigatou-gozaimasu', jp: 'ありがとうございます' }, 'ありがとう'), false);
 });
 
-test('difficult short and ambiguous items require their displayed context in speech', () => {
+test('suffixes use a short carrier while ordinary vocabulary stays isolated', () => {
   const suffix = { id: 'suffix-go', jp: '～ご' };
   assert.equal(promptFor(suffix).frame, 'にほん ___');
   assert.equal(matchesSpoken(suffix, '日本語'), true);
   assert.equal(matchesSpoken(suffix, 'にほんご'), true);
   assert.equal(matchesSpoken(suffix, '語'), false);
+  const honorific = { id: 'suffix-san', jp: '～さん' };
+  assert.equal(promptFor(honorific).frame, 'たなか ___');
+  assert.equal(matchesSpoken(honorific, '田中さん'), true);
+  assert.equal(matchesSpoken(honorific, '3'), false);
   const major = { id: 'senkou', jp: 'せんこう' };
-  assert.equal(matchesSpoken(major, '私の専攻です'), true);
-  assert.equal(matchesSpoken(major, '専攻'), false);
+  assert.equal(promptFor(major), null);
+  assert.equal(matchesSpoken(major, '専攻'), true);
+  assert.equal(matchesSpoken(major, '私の専攻です'), false);
   assert.equal(matchesSpoken({ id: 'mizu', jp: 'みず' }, '水'), true);
 });
 

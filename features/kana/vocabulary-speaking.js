@@ -28,14 +28,13 @@
   };
   const contextPrompts = {
     "suffix-nensei": { frame: "いち ___", expectedKana: "いちねんせい", spellings: "一年生|1年生" },
+    "suffix-san": { frame: "たなか ___", expectedKana: "たなかさん", spellings: "田中さん" },
     "suffix-jin": { frame: "にほん ___", expectedKana: "にほんじん", spellings: "日本人" },
     "suffix-ji": { frame: "いち ___", expectedKana: "いちじ", spellings: "一時|1時" },
     "suffix-go": { frame: "にほん ___", expectedKana: "にほんご", spellings: "日本語" },
     "suffix-sai": { frame: "ご ___", expectedKana: "ごさい", spellings: "五歳|五才|5歳|5才" },
     "suffix-ban": { frame: "いち ___", expectedKana: "いちばん", spellings: "一番|1番" },
     "suffix-en": { frame: "ひゃく ___", expectedKana: "ひゃくえん", spellings: "百円|100円" },
-    senkou: { frame: "わたしの ___ です", expectedKana: "わたしのせんこうです", spellings: "私の専攻です|わたしの専攻です" },
-    kougaku: { frame: "___ の がくせいです", expectedKana: "こうがくのがくせいです", spellings: "工学の学生です|こうがくの学生です" },
   };
   function normalize(value) {
     return String(value).normalize("NFKC").toLowerCase()

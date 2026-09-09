@@ -960,7 +960,7 @@
       activity: "vocabulary",
       targetId: word.id,
       expected: currentSpeechPrompt?.expectedKana || word.jp,
-      promptStyle: currentSpeechPrompt ? "context" : "isolated",
+      promptStyle: currentSpeechPrompt ? "suffix-context" : "isolated",
     }) || null;
     currentContext = !speaking && recall && CONTEXT_PROMPTS[word.id] && Math.random() < .65 ? CONTEXT_PROMPTS[word.id] : "";
     $("#vocabPrompt").textContent = speaking && currentSpeechPrompt ? currentSpeechPrompt.frame : recall ? (currentContext || word.meaning) : word.jp;

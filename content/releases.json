@@ -108,7 +108,7 @@
       "changes": [
         {
           "pages": ["vocabulary"],
-          "text": "Short suffixes and easily confused vocabulary now use complete Japanese phrases to give speech recognition more context."
+          "text": "Japanese suffixes now use short, natural carrier expressions to give speech recognition enough context while regular vocabulary remains an isolated word check."
         },
         {
           "pages": ["vocabulary", "numbers", "settings"],
