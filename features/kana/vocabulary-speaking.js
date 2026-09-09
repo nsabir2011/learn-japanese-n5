@@ -26,6 +26,17 @@
     asagohan: "朝ご飯|朝御飯|朝ごはん", taberu: "食べる", nomu: "飲む", mise: "店", eki: "駅", densha: "電車", kuruma: "車",
     migi: "右", hidari: "左", massugu: "真っ直ぐ|真っすぐ", iriguchi: "入口|入り口", deguchi: "出口"
   };
+  const contextPrompts = {
+    "suffix-nensei": { frame: "いち ___", expectedKana: "いちねんせい", spellings: "一年生|1年生" },
+    "suffix-jin": { frame: "にほん ___", expectedKana: "にほんじん", spellings: "日本人" },
+    "suffix-ji": { frame: "いち ___", expectedKana: "いちじ", spellings: "一時|1時" },
+    "suffix-go": { frame: "にほん ___", expectedKana: "にほんご", spellings: "日本語" },
+    "suffix-sai": { frame: "ご ___", expectedKana: "ごさい", spellings: "五歳|五才|5歳|5才" },
+    "suffix-ban": { frame: "いち ___", expectedKana: "いちばん", spellings: "一番|1番" },
+    "suffix-en": { frame: "ひゃく ___", expectedKana: "ひゃくえん", spellings: "百円|100円" },
+    senkou: { frame: "わたしの ___ です", expectedKana: "わたしのせんこうです", spellings: "私の専攻です|わたしの専攻です" },
+    kougaku: { frame: "___ の がくせいです", expectedKana: "こうがくのがくせいです", spellings: "工学の学生です|こうがくの学生です" },
+  };
   function normalize(value) {
     return String(value).normalize("NFKC").toLowerCase()
       .replace(/[\u30a1-\u30f6]/g, char => String.fromCharCode(char.charCodeAt(0) - 0x60))
@@ -35,6 +46,15 @@
     const input = normalize(transcript);
     const accepted = [...word.jp.split(/[／/]/), ...(spellings[word.id] || "").split("|")];
     return Boolean(input) && accepted.some(value => normalize(value) === input);
+  }
+  function promptFor(word) {
+    return contextPrompts[word?.id] || null;
+  }
+  function matchesSpoken(word, transcript) {
+    const prompt = promptFor(word);
+    if (!prompt) return matches(word, transcript);
+    const input = normalize(transcript);
+    return [prompt.expectedKana, ...prompt.spellings.split("|")].some(value => normalize(value) === input);
   }
 
   const romajiPairs = {
@@ -92,7 +112,9 @@
   function matchesRomaji(word, value) {
     return Boolean(normalizeRomaji(value)) && normalizeRomaji(value) === normalizeRomaji(word.romaji);
   }
-  function interpretation(words, transcript) {
+  function interpretation(words, transcript, targetWord) {
+    const prompt = promptFor(targetWord);
+    if (prompt && matchesSpoken(targetWord, transcript)) return prompt.expectedKana;
     const known = words.find(word => matches(word, transcript));
     if (known) return known.jp;
     const raw = String(transcript).normalize("NFKC").trim();
@@ -106,7 +128,8 @@
   function createSession(Recognition, update) {
     let active = null;
     let timer = null;
-    let snapshot = { status: "idle", text: "", message: "" };
+    let snapshot = { status: "idle", text: "", message: "", attemptId: "", errorCode: "", confidence: null, durationMs: 0 };
+    let attemptNumber = 0;
     const emit = patch => { snapshot = { ...snapshot, ...patch }; update(snapshot); };
     function cancel() {
       const previous = active;
@@ -116,6 +139,8 @@
     }
     function start() {
       cancel();
+      const startedAt = Date.now();
+      const attemptId = `speech-${startedAt}-${++attemptNumber}`;
       let recognition;
       try {
         recognition = new Recognition();
@@ -125,7 +150,8 @@
         recognition.interimResults = true;
         recognition.maxAlternatives = 1;
         let finalText = "";
-        emit({ status: "starting", text: "", message: "Allow microphone access to begin." });
+        let confidence = null;
+        emit({ status: "starting", text: "", message: "Allow microphone access to begin.", attemptId, errorCode: "", confidence: null, durationMs: 0 });
         recognition.onstart = () => {
           if (active !== recognition) return;
           emit({ status: "listening", message: "Listening… Say the Japanese expression." });
@@ -135,10 +161,13 @@
           finalText = "";
           let interim = "";
           for (let i = 0; i < event.results.length; i++) {
-            if (event.results[i].isFinal) finalText += event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalText += event.results[i][0].transcript;
+              if (Number.isFinite(event.results[i][0].confidence)) confidence = event.results[i][0].confidence;
+            }
             else interim += event.results[i][0].transcript;
           }
-          emit({ text: finalText + interim });
+          emit({ text: finalText + interim, confidence });
         };
         recognition.onerror = event => {
           if (active !== recognition) return;
@@ -151,24 +180,24 @@
             "no-speech": "No speech was heard. Try again when you’re ready."
           };
           cancel();
-          emit({ status: "error", text: "", message: messages[event.error] || "Couldn’t recognize that. Try again or type your answer." });
+          emit({ status: "error", text: "", message: messages[event.error] || "Couldn’t recognize that. Try again or type your answer.", attemptId, errorCode: event.error || "unknown", durationMs: Date.now() - startedAt });
         };
         recognition.onend = () => {
           if (active !== recognition) return;
           active = null;
           clearTimeout(timer);
-          emit({ status: finalText.trim() ? "review" : "error", text: finalText,
+          emit({ status: finalText.trim() ? "review" : "error", text: finalText, attemptId, confidence, errorCode: finalText.trim() ? "" : "no-final-result", durationMs: Date.now() - startedAt,
             message: finalText.trim() ? "Is that what you said? Submit or try again." : "No complete speech was recognized. Try again." });
         };
         recognition.start();
         timer = setTimeout(() => {
           if (active !== recognition) return;
           cancel();
-          emit({ status: "error", text: "", message: "Recognition timed out. Try again or type your answer." });
+          emit({ status: "error", text: "", message: "Recognition timed out. Try again or type your answer.", attemptId, errorCode: "timeout", durationMs: Date.now() - startedAt });
         }, 20000);
       } catch {
         cancel();
-        emit({ status: "error", text: "", message: "Speech recognition couldn’t start. Try again or type your answer." });
+        emit({ status: "error", text: "", message: "Speech recognition couldn’t start. Try again or type your answer.", attemptId, errorCode: "start-failed", durationMs: Date.now() - startedAt });
       }
     }
     function stop() {
@@ -178,5 +207,5 @@
     }
     return { start, stop, cancel };
   }
-  globalThis.KANA_SPRINT_VOCABULARY_SPEAKING = { normalize, matches, matchesRomaji, romajiToHiragana, interpretation, createSession };
+  globalThis.KANA_SPRINT_VOCABULARY_SPEAKING = { normalize, matches, matchesSpoken, matchesRomaji, romajiToHiragana, interpretation, promptFor, createSession };
 })();

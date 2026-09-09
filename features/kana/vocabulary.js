@@ -266,6 +266,7 @@
   const Scheduler = window.KANA_SPRINT_VOCABULARY_SCHEDULER;
   const MODE_KEYS = ["written", "spoken", "recall", "speaking"];
   const Speaking = window.KANA_SPRINT_VOCABULARY_SPEAKING;
+  const SpeechDiagnostics = window.KANA_SPRINT_SPEECH_DIAGNOSTICS;
   const UNIFIED_REVIEW_MODEL = "unified-v1";
   const SCOPE_LABELS = { adaptive: "Guided course", all: "All vocabulary", core: "Core lessons", lesson1: "Lesson 1", lesson2: "Lesson 2", extras: "Practical extras", trouble: "Trouble words" };
   const CHOICE_COUNT_VALUES = ["auto", "4", "6", "8"];
@@ -389,6 +390,8 @@
   let speechStatus = "idle";
   let typedAnswer = false;
   let typingScript = state.typingScript === "romaji" ? "romaji" : "japanese";
+  let speechEvidence = null;
+  let currentSpeechPrompt = null;
 
   function updateSpeakingKeyboardHint() {
     const hint = $("#vocabKeyboardHint");
@@ -422,7 +425,7 @@
   }
 
   function updateInterpretation(value, visible = true) {
-    const interpreted = Speaking.interpretation(WORDS, value);
+    const interpreted = Speaking.interpretation(WORDS, value, current);
     $("#vocabSpeechKana").textContent = interpreted || "Kana interpretation unavailable";
     $("#vocabSpeechInterpretation").classList.toggle("hidden", !visible);
     $("#vocabSpeechInterpretation").classList.toggle("is-unavailable", !interpreted);
@@ -477,7 +480,17 @@
       : "Speech recognition isn’t available in this browser. Try Chrome or type your answer.");
     if (Recognition) speechSession = Speaking.createSession(Recognition, snapshot => {
       input.value = snapshot.text;
-      const correctFinalTranscript = snapshot.status === "review" && Speaking.matches(current, snapshot.text);
+      const correctFinalTranscript = snapshot.status === "review" && Speaking.matchesSpoken(current, snapshot.text);
+      if (snapshot.attemptId && ["review", "error"].includes(snapshot.status)) {
+        SpeechDiagnostics?.addAttempt(speechEvidence, {
+          attemptId: snapshot.attemptId,
+          outcome: correctFinalTranscript ? "accepted" : snapshot.status === "review" ? "mismatch" : "error",
+          transcript: snapshot.text,
+          confidence: snapshot.confidence,
+          errorCode: snapshot.errorCode,
+          durationMs: snapshot.durationMs,
+        });
+      }
       if (snapshot.status === "review" && !correctFinalTranscript) {
         setSpeechStatus("mismatch", "That doesn’t match yet. Try speaking again or type your answer.");
         updateInterpretation("", false);
@@ -512,7 +525,11 @@
     const automatic = automaticallyAccepted === true;
     if (phase !== "question" || currentMode !== "speaking" || (!automatic && $("#vocabSpeechSubmit").disabled)) return;
     const transcript = $("#vocabSpeechText").value.trim();
-    const correct = typedAnswer && typingScript === "romaji" ? Speaking.matchesRomaji(current, transcript) : Speaking.matches(current, transcript);
+    const correct = typedAnswer
+      ? (typingScript === "romaji" ? Speaking.matchesRomaji(current, transcript) : Speaking.matches(current, transcript))
+      : Speaking.matchesSpoken(current, transcript);
+    if (correct) SpeechDiagnostics?.resolve(speechEvidence, typedAnswer ? "typed-correct" : "speech-correct");
+    speechEvidence = null;
     // Typed fallback shares recall statistics, but never increases speaking mastery.
     if (typedAnswer) currentMode = "recall";
     const progress = itemState(current);
@@ -738,7 +755,7 @@
         <div id="vocabQuestion">
           <div class="question">
             <div class="question-label" id="vocabQuestionLabel">Choose the English meaning</div>
-            <div class="prompt word vocab-prompt" id="vocabPrompt">こんにちは</div>
+            <div class="prompt word vocab-prompt" id="vocabPrompt">こんにちは</div><div class="vocab-speaking-cue hidden" id="vocabSpeakingCue"></div>
           <div class="word-audio-prompt hidden" id="vocabAudioPrompt"><span class="word-audio-icon" aria-hidden="true">🔊</span><strong>Listen to the Japanese expression</strong><button class="big-button" id="vocabQuestionSpeech" type="button" aria-keyshortcuts="R">Play again <kbd>R</kbd></button></div>
           </div>
           <div class="vocab-options" id="vocabOptions"></div>
@@ -938,13 +955,23 @@
     const spoken = format === "spoken";
     const speaking = format === "speaking";
     const recall = format === "recall" || speaking;
+    currentSpeechPrompt = speaking ? Speaking.promptFor(word) : null;
+    if (speaking) speechEvidence = SpeechDiagnostics?.begin({
+      activity: "vocabulary",
+      targetId: word.id,
+      expected: currentSpeechPrompt?.expectedKana || word.jp,
+      promptStyle: currentSpeechPrompt ? "context" : "isolated",
+    }) || null;
     currentContext = !speaking && recall && CONTEXT_PROMPTS[word.id] && Math.random() < .65 ? CONTEXT_PROMPTS[word.id] : "";
-    $("#vocabPrompt").textContent = recall ? (currentContext || word.meaning) : word.jp;
+    $("#vocabPrompt").textContent = speaking && currentSpeechPrompt ? currentSpeechPrompt.frame : recall ? (currentContext || word.meaning) : word.jp;
+    $("#vocabSpeakingCue").textContent = currentSpeechPrompt ? `Complete the phrase using “${word.meaning}”. Say the whole phrase.` : "";
+    $("#vocabSpeakingCue").classList.toggle("hidden", !currentSpeechPrompt);
     $("#vocabPrompt").classList.toggle("vocab-recall-prompt", recall);
+    $("#vocabPrompt").classList.toggle("vocab-context-prompt", Boolean(currentSpeechPrompt));
     $("#vocabPrompt").classList.toggle("hidden", spoken);
     $("#vocabAudioPrompt").classList.toggle("hidden", !spoken);
-    $("#vocabQuestionLabel").textContent = speaking ? "Say the Japanese expression" : spoken ? "Listen and choose the English meaning" : recall ? (currentContext ? "Choose the expression that fits this situation" : "Choose the Japanese expression") : "Choose the English meaning";
-    $("#vocabPracticeMode").textContent = `Vocabulary • ${modeLabel(format)}${currentContext ? " in context" : ""}`;
+    $("#vocabQuestionLabel").textContent = speaking ? (currentSpeechPrompt ? "Complete and say the Japanese phrase" : "Say the Japanese expression") : spoken ? "Listen and choose the English meaning" : recall ? (currentContext ? "Choose the expression that fits this situation" : "Choose the Japanese expression") : "Choose the English meaning";
+    $("#vocabPracticeMode").textContent = `Vocabulary • ${modeLabel(format)}${currentContext || currentSpeechPrompt ? " in context" : ""}`;
     const options = $("#vocabOptions");
     options.innerHTML = "";
     options.classList.remove("is-answered");
@@ -1045,6 +1072,7 @@
       $("#vocabKeyboardHint").innerHTML = "Press <kbd>Enter</kbd> for the next question.";
     }
     const correct = !unknown && selectedId === current.id;
+    if (wasSpeakingQuestion && !correct) speechEvidence = null;
     const selectedWord = !correct && selectedId ? WORDS.find(word => word.id === selectedId) : null;
     applyResult(correct, selectedId);
     const options = $("#vocabOptions");
@@ -1275,7 +1303,7 @@
       if (phase === "question" && currentMode === "speaking") setupSpeaking();
     }
   });
-  window.addEventListener("pagehide", stopSpeaking);
+  window.addEventListener("pagehide", () => { speechEvidence = null; stopSpeaking(); });
   new MutationObserver(() => {
     if (!$("#panel-vocabulary").classList.contains("active") && speechSession) {
       stopSpeaking();

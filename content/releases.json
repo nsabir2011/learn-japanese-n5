@@ -100,6 +100,21 @@
           "text": "The Submit answer button now appears only when typing, since correct speech is accepted automatically and mismatched speech remains available to retry."
         }
       ]
+    },
+    {
+      "id": "2026-09-09.5",
+      "publishedAt": "2026-09-09",
+      "title": "More reliable speech practice",
+      "changes": [
+        {
+          "pages": ["vocabulary"],
+          "text": "Short suffixes and easily confused vocabulary now use complete Japanese phrases to give speech recognition more context."
+        },
+        {
+          "pages": ["vocabulary", "numbers", "settings"],
+          "text": "Speech diagnostics can now collect local, audio-free evidence from retry chains that end with a correct answer, with controls to review, copy, or clear it."
+        }
+      ]
     }
   ]
 }

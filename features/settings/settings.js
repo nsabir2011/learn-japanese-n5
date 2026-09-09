@@ -14,6 +14,7 @@
     kanaSprintSpeechV1: { label: "Speech & voices", version: 1 }
   };
   const $ = selector => document.querySelector(selector);
+  const Diagnostics = window.KANA_SPRINT_SPEECH_DIAGNOSTICS;
   let stagedBackup = null;
 
   function readStore(key) {
@@ -173,13 +174,67 @@
   function resetAll() {
     if (!confirm("Reset all Japanese N5 Practice progress and settings on this device? This cannot be undone.")) return;
     Object.keys(STORES).forEach(key => localStorage.removeItem(key));
+    Diagnostics?.clear();
     $("#resetStatus").textContent = "All app progress and settings were reset.";
     renderOverview();
     setTimeout(() => location.reload(), 350);
   }
 
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+  }
+
+  function renderDiagnostics() {
+    const records = Diagnostics?.read().records || [];
+    const summary = Diagnostics?.summarize(records) || { total: 0, speechRecoveries: 0, typedRecoveries: 0, frequentTargets: [] };
+    $("#diagnosticsSummary").innerHTML = `
+      <div><span>Saved chains</span><strong>${summary.total}</strong></div>
+      <div><span>Recovered by speech</span><strong>${summary.speechRecoveries}</strong></div>
+      <div><span>Recovered by typing</span><strong>${summary.typedRecoveries}</strong></div>`;
+    if (!summary.frequentTargets.length) {
+      $("#diagnosticsTargets").innerHTML = '<p class="muted diagnostics-empty">No recognition-friction records yet.</p>';
+      return;
+    }
+    $("#diagnosticsTargets").innerHTML = `<h3>Frequent friction</h3>${summary.frequentTargets.slice(0, 8).map(target => {
+      const transcripts = target.transcripts.length
+        ? target.transcripts.map(([text, count]) => `<span lang="ja">${escapeHtml(text)}${count > 1 ? ` ×${count}` : ""}</span>`).join("")
+        : '<span>No transcript returned</span>';
+      return `<div class="diagnostics-target"><div><strong>${escapeHtml(target.expected || target.targetId)}</strong><small>${escapeHtml(target.activity)} · ${target.chains} resolved chain${target.chains === 1 ? "" : "s"}</small></div><div class="diagnostics-transcripts">${transcripts}</div></div>`;
+    }).join("")}`;
+  }
+
+  async function copyDiagnostics() {
+    const records = Diagnostics?.read().records || [];
+    const payload = JSON.stringify({ format: "japanese-n5-speech-diagnostics", exportedAt: new Date().toISOString(), records }, null, 2);
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(payload);
+      else {
+        const textarea = document.createElement("textarea");
+        textarea.value = payload;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        if (!document.execCommand("copy")) throw new Error("Copy unavailable");
+        textarea.remove();
+      }
+      $("#diagnosticsStatus").textContent = `${records.length} diagnostic record${records.length === 1 ? "" : "s"} copied. No audio is included.`;
+    } catch {
+      $("#diagnosticsStatus").textContent = "Couldn’t copy diagnostics in this browser.";
+    }
+  }
+
+  function clearDiagnostics() {
+    if (!confirm("Clear speech recognition diagnostics from this device? This cannot be undone.")) return;
+    Diagnostics?.clear();
+    renderDiagnostics();
+    $("#diagnosticsStatus").textContent = "Speech recognition diagnostics were cleared.";
+  }
+
   window.KANA_SPRINT_SPEECH?.bindSettings(document);
   renderOverview();
+  renderDiagnostics();
   $("#exportAll").addEventListener("click", exportAll);
   $("#chooseBackup").addEventListener("click", () => $("#backupFile").click());
   $("#backupFile").addEventListener("change", event => { if (event.target.files?.[0]) prepareBackup(event.target.files[0]); event.target.value = ""; });
@@ -189,4 +244,6 @@
   $("#componentFile").addEventListener("change", event => { if (event.target.files?.[0]) importComponent(event.target.files[0]); event.target.value = ""; });
   $("#resetComponent").addEventListener("click", resetComponent);
   $("#resetAll").addEventListener("click", resetAll);
+  $("#copyDiagnostics").addEventListener("click", copyDiagnostics);
+  $("#clearDiagnostics").addEventListener("click", clearDiagnostics);
 })();

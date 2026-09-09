@@ -12,6 +12,8 @@
 .vocab-due-summary{display:grid;align-content:center;gap:4px;border:1px solid var(--line);border-radius:11px;background:var(--panel3);padding:11px 12px}.vocab-due-summary>span{color:var(--muted);font-size:.72rem}.vocab-due-summary>strong{font-size:.95rem;color:#b9dcff}.vocab-due-summary>small{color:var(--muted);font-size:.72rem;line-height:1.35}
 .vocab-prompt{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif!important}
 .vocab-prompt.vocab-recall-prompt{display:block;width:min(780px,calc(100% - 32px));max-width:none;margin-left:auto;margin-right:auto;font-family:inherit!important;font-size:clamp(1.45rem,4vw,2.35rem);line-height:1.3;text-align:center}
+.vocab-prompt.vocab-context-prompt{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif!important}
+.vocab-speaking-cue{width:min(720px,calc(100% - 32px));margin:-18px auto 20px;color:var(--muted);font-size:.9rem;line-height:1.45;text-align:center}
 .vocab-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;width:min(830px,calc(100% - 28px));margin:2px auto 20px}
 .vocab-choice{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:10px;min-height:68px;border:1px solid #414b58;border-radius:14px;background:#10161d;color:var(--text);padding:12px 15px;text-align:left;font:inherit;cursor:pointer}
 .vocab-choice:hover{border-color:#6c89a8;background:#17212c}.vocab-choice:focus-visible{outline:3px solid rgba(88,166,255,.35);outline-offset:2px}

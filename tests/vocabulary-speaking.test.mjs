@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 await import('../features/kana/vocabulary-speaking.js');
-const { matches, matchesRomaji, romajiToHiragana, interpretation, createSession } = globalThis.KANA_SPRINT_VOCABULARY_SPEAKING;
+const { matches, matchesSpoken, matchesRomaji, romajiToHiragana, interpretation, promptFor, createSession } = globalThis.KANA_SPRINT_VOCABULARY_SPEAKING;
 
 test('speaking accepts kana, kanji, width and punctuation variants without fuzzy matches', () => {
   const word = { id: 'mizu', jp: 'みず' };
@@ -11,6 +11,18 @@ test('speaking accepts kana, kanji, width and punctuation variants without fuzzy
   assert.equal(matches({ id: 'suffix-en', jp: '～えん' }, '円'), true);
   assert.equal(matches({ id: 'ichiji', jp: 'いちじ' }, '１時'), true);
   assert.equal(matches({ id: 'arigatou-gozaimasu', jp: 'ありがとうございます' }, 'ありがとう'), false);
+});
+
+test('difficult short and ambiguous items require their displayed context in speech', () => {
+  const suffix = { id: 'suffix-go', jp: '～ご' };
+  assert.equal(promptFor(suffix).frame, 'にほん ___');
+  assert.equal(matchesSpoken(suffix, '日本語'), true);
+  assert.equal(matchesSpoken(suffix, 'にほんご'), true);
+  assert.equal(matchesSpoken(suffix, '語'), false);
+  const major = { id: 'senkou', jp: 'せんこう' };
+  assert.equal(matchesSpoken(major, '私の専攻です'), true);
+  assert.equal(matchesSpoken(major, '専攻'), false);
+  assert.equal(matchesSpoken({ id: 'mizu', jp: 'みず' }, '水'), true);
 });
 
 test('romaji typing matches exact vocabulary answers and previews kana', () => {

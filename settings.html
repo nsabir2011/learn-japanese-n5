@@ -3,21 +3,22 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="description" content="Speech, backup, synchronization, and data settings for Japanese N5 Practice." />
+<meta name="description" content="Speech, diagnostics, backup, synchronization, and data settings for Japanese N5 Practice." />
 <title>Settings &amp; Data — Japanese N5 Practice</title>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
 <link rel="alternate icon" href="./favicon.ico" />
 <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
 <link rel="stylesheet" href="./features/kana/trainer.css?v=20260908-2" />
-<link rel="stylesheet" href="./features/settings/settings.css?v=20260904-1" />
+<link rel="stylesheet" href="./features/settings/settings.css?v=20260909-1" />
 <script defer src="./shared/progress-sync.js?v=20260903-1"></script>
 <script defer src="./shared/speech.js?v=20260904-1"></script>
-<script defer src="./features/settings/settings.js?v=20260904-1"></script>
+<script defer src="./shared/speech-diagnostics.js?v=20260909-1"></script>
+<script defer src="./features/settings/settings.js?v=20260909-1"></script>
 </head>
 <body>
   <main class="settings-shell">
     <header class="settings-header">
-      <div><p class="settings-eyebrow">Japanese N5 Practice</p><h1>Settings &amp; Data</h1><p class="subtitle">Manage shared pronunciation, portable backups, and saved learning progress.</p></div>
+      <div><p class="settings-eyebrow">Japanese N5 Practice</p><h1>Settings &amp; Data</h1><p class="subtitle">Manage pronunciation, speech diagnostics, portable backups, and saved learning progress.</p></div>
       <div class="header-actions"><div class="header-nav"><a class="ghost header-link-button" href="./index.html">Home</a></div><span class="pill header-sync-status" role="status">Checking saved progress…</span></div>
     </header>
 
@@ -49,6 +50,15 @@
           <button class="big-button hidden" id="restoreBackup">Restore this backup</button>
         </section>
       </div>
+
+      <section class="card settings-card" id="speechDiagnostics">
+        <h2>Speech recognition diagnostics</h2>
+        <p class="muted">See where browser transcription needed retries. Records stay on this device and never include audio.</p>
+        <div class="diagnostics-summary" id="diagnosticsSummary"></div>
+        <div class="diagnostics-targets" id="diagnosticsTargets"></div>
+        <div class="actions"><button class="ghost" id="copyDiagnostics" type="button">Copy diagnostics</button><button class="ghost danger" id="clearDiagnostics" type="button">Clear diagnostics</button></div>
+        <div class="callout" id="diagnosticsStatus">Only attempt chains that end with a correct speech or typed answer are saved. Earlier transcripts show recognition friction, not proven pronunciation errors.</div>
+      </section>
 
       <details class="details-card" id="components">
         <summary>Advanced component backups</summary>

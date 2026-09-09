@@ -87,6 +87,8 @@
   let speechStatus = "idle";
   let typedSpeakingAnswer = false;
   let speakingTypingScript = "japanese";
+  const SpeechDiagnostics = window.KANA_SPRINT_SPEECH_DIAGNOSTICS;
+  let speechEvidence = null;
 
   function saveState() {
     state.savedAt = Date.now();
@@ -435,6 +437,7 @@
 
   function nextQuestion() {
     stopSpeakingRecognition();
+    speechEvidence = null;
     if (!window.KANA_SPRINT_SPEECH?.getPreferences().continueOnAdvance) window.KANA_SPRINT_SPEECH?.stop();
     current = makeQuestion();
     questionNumber++;
@@ -493,7 +496,10 @@
     $("#numberDontKnow").classList.remove("number-hidden");
     $("#numberNext").classList.add("number-hidden");
     $("#numberCount").textContent = `Question ${questionNumber}`;
-    if (asksForSpeaking) setupSpeaking();
+    if (asksForSpeaking) {
+      speechEvidence = SpeechDiagnostics?.begin({ activity: "numbers", targetId: String(current.number), expected: current.hiragana, promptStyle: "number" }) || null;
+      setupSpeaking();
+    }
     else {
       $("#numberKeyboardHint").textContent = "Number progress is saved independently and follows you between sessions.";
       if (asksFromAudio) setTimeout(() => speakJapanese(current.hiragana), 100);
@@ -571,6 +577,16 @@
     speechSession = Speaking.createSession(Recognition, snapshot => {
       input.value = snapshot.text;
       const correctFinalTranscript = snapshot.status === "review" && Speaking.matches(current, snapshot.text);
+      if (snapshot.attemptId && ["review", "error"].includes(snapshot.status)) {
+        SpeechDiagnostics?.addAttempt(speechEvidence, {
+          attemptId: snapshot.attemptId,
+          outcome: correctFinalTranscript ? "accepted" : snapshot.status === "review" ? "mismatch" : "error",
+          transcript: snapshot.text,
+          confidence: snapshot.confidence,
+          errorCode: snapshot.errorCode,
+          durationMs: snapshot.durationMs,
+        });
+      }
       if (snapshot.status === "review" && !correctFinalTranscript) {
         setSpeechStatus("mismatch", "That doesn’t match yet. Try speaking again or type your answer.");
         updateSpeakingInterpretation("", false);
@@ -622,6 +638,8 @@
     const correct = typedSpeakingAnswer && speakingTypingScript === "romaji"
       ? Speaking.matchesRomaji(current, value)
       : Speaking.matches(current, value);
+    if (correct) SpeechDiagnostics?.resolve(speechEvidence, typedSpeakingAnswer ? "typed-correct" : "speech-correct");
+    speechEvidence = null;
     stopSpeakingRecognition();
     updateMastery(correct);
     showAnswer(correct);
@@ -833,6 +851,7 @@
       else if (["idle", "error"].includes(speechStatus)) $("#numberRecord").click();
     }, true);
     $("#numberDontKnow").addEventListener("click", () => {
+      speechEvidence = null;
       updateMastery(false);
       if (current.direction === "speaking") showAnswer(false);
       else showRescue();
@@ -851,7 +870,7 @@
         if (phase === "question" && current?.direction === "speaking") setupSpeaking();
       }
     });
-    window.addEventListener("pagehide", stopSpeakingRecognition);
+    window.addEventListener("pagehide", () => { speechEvidence = null; stopSpeakingRecognition(); });
     new MutationObserver(() => {
       if (!$("#panel-numbers").classList.contains("active") && speechSession) {
         stopSpeakingRecognition();

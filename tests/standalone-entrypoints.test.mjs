@@ -274,6 +274,9 @@ test('speaking practice exposes error, kana interpretation, romaji, and post-sub
   assert.match(vocabulary, /id="vocabSpeechSubmit"[^>]*disabled/);
   assert.match(vocabulary, /\$\("#vocabSpeechSubmit"\)\.classList\.add\("hidden"\)/);
   assert.match(vocabulary, /\$\("#vocabSpeechSubmit"\)\.classList\.remove\("hidden"\)/);
+  assert.match(vocabulary, /Speaking\.matchesSpoken\(current, snapshot\.text\)/);
+  assert.match(vocabulary, /Complete and say the Japanese phrase/);
+  assert.match(vocabulary, /SpeechDiagnostics\?\.resolve\(speechEvidence/);
 });
 
 test('speaking direction keeps session controls aligned and disables answer choices', () => {
@@ -305,6 +308,18 @@ test('numbers offers explicit speech recognition with review and typing fallback
   assert.match(numbers, /id="numberSpeechSubmit"[^>]*disabled/);
   assert.match(numbers, /\$\("#numberSpeechSubmit"\)\.classList\.add\("number-hidden"\)/);
   assert.match(numbers, /\$\("#numberSpeechSubmit"\)\.classList\.remove\("number-hidden"\)/);
+  assert.match(numbers, /SpeechDiagnostics\?\.resolve\(speechEvidence/);
+});
+
+test('settings exposes local speech diagnostics controls', () => {
+  const settings = readFileSync(resolve(root, 'settings.html'), 'utf8');
+  const script = readFileSync(resolve(root, 'features/settings/settings.js'), 'utf8');
+  assert.match(settings, /speech-diagnostics\.js/);
+  assert.match(settings, /id="speechDiagnostics"/);
+  assert.match(settings, /id="copyDiagnostics"/);
+  assert.match(settings, /id="clearDiagnostics"/);
+  assert.match(script, /Diagnostics\?\.summarize/);
+  assert.match(script, /never include audio|No audio is included/);
 });
 
 test('number pattern mastery uses the same collapsible plus and minus pattern as vocabulary', () => {

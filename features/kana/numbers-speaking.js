@@ -34,7 +34,8 @@
   function createSession(Recognition, update) {
     let active = null;
     let timer = null;
-    let snapshot = { status: "idle", text: "", message: "" };
+    let snapshot = { status: "idle", text: "", message: "", attemptId: "", errorCode: "", confidence: null, durationMs: 0 };
+    let attemptNumber = 0;
     const emit = patch => { snapshot = { ...snapshot, ...patch }; update(snapshot); };
     function cancel() {
       const previous = active;
@@ -44,6 +45,8 @@
     }
     function start() {
       cancel();
+      const startedAt = Date.now();
+      const attemptId = `speech-${startedAt}-${++attemptNumber}`;
       try {
         const recognition = new Recognition();
         active = recognition;
@@ -52,7 +55,8 @@
         recognition.interimResults = true;
         recognition.maxAlternatives = 1;
         let finalText = "";
-        emit({ status: "starting", text: "", message: "Allow microphone access to begin." });
+        let confidence = null;
+        emit({ status: "starting", text: "", message: "Allow microphone access to begin.", attemptId, errorCode: "", confidence: null, durationMs: 0 });
         recognition.onstart = () => {
           if (active === recognition) emit({ status: "listening", message: "Listening… Say the Japanese number." });
         };
@@ -61,10 +65,13 @@
           finalText = "";
           let interim = "";
           for (let index = 0; index < event.results.length; index++) {
-            if (event.results[index].isFinal) finalText += event.results[index][0].transcript;
+            if (event.results[index].isFinal) {
+              finalText += event.results[index][0].transcript;
+              if (Number.isFinite(event.results[index][0].confidence)) confidence = event.results[index][0].confidence;
+            }
             else interim += event.results[index][0].transcript;
           }
-          emit({ text: finalText + interim });
+          emit({ text: finalText + interim, confidence });
         };
         recognition.onerror = event => {
           if (active !== recognition) return;
@@ -77,7 +84,7 @@
             "no-speech": "No speech was heard. Try again when you’re ready."
           };
           cancel();
-          emit({ status: "error", text: "", message: messages[event.error] || "Couldn’t recognize that. Try again or type your answer." });
+          emit({ status: "error", text: "", message: messages[event.error] || "Couldn’t recognize that. Try again or type your answer.", attemptId, errorCode: event.error || "unknown", durationMs: Date.now() - startedAt });
         };
         recognition.onend = () => {
           if (active !== recognition) return;
@@ -86,6 +93,10 @@
           emit({
             status: finalText.trim() ? "review" : "error",
             text: finalText,
+            attemptId,
+            confidence,
+            errorCode: finalText.trim() ? "" : "no-final-result",
+            durationMs: Date.now() - startedAt,
             message: finalText.trim() ? "Is that what you said? Submit or try again." : "No complete speech was recognized. Try again."
           });
         };
@@ -93,11 +104,11 @@
         timer = setTimeout(() => {
           if (active !== recognition) return;
           cancel();
-          emit({ status: "error", text: "", message: "Recognition timed out. Try again or type your answer." });
+          emit({ status: "error", text: "", message: "Recognition timed out. Try again or type your answer.", attemptId, errorCode: "timeout", durationMs: Date.now() - startedAt });
         }, 20000);
       } catch {
         cancel();
-        emit({ status: "error", text: "", message: "Speech recognition couldn’t start. Try again or type your answer." });
+        emit({ status: "error", text: "", message: "Speech recognition couldn’t start. Try again or type your answer.", attemptId, errorCode: "start-failed", durationMs: Date.now() - startedAt });
       }
     }
     function stop() {
