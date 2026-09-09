@@ -89,6 +89,17 @@
           "text": "Correct spoken vocabulary answers are now accepted automatically. A mismatch stays unscored so you can retry with R or type your answer."
         }
       ]
+    },
+    {
+      "id": "2026-09-09.4",
+      "publishedAt": "2026-09-09",
+      "title": "Clearer speaking actions",
+      "changes": [
+        {
+          "pages": ["vocabulary", "numbers"],
+          "text": "The Submit answer button now appears only when typing, since correct speech is accepted automatically and mismatched speech remains available to retry."
+        }
+      ]
     }
   ]
 }

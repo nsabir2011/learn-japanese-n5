@@ -271,6 +271,9 @@ test('speaking practice exposes error, kana interpretation, romaji, and post-sub
   assert.match(vocabulary, /That doesn’t match yet\. Try speaking again or type your answer\./);
   assert.match(vocabulary, /speechStatus !== "review"/);
   assert.match(styles, /vocabSpeechStatus\[data-status="mismatch"\]/);
+  assert.match(vocabulary, /id="vocabSpeechSubmit"[^>]*disabled/);
+  assert.match(vocabulary, /\$\("#vocabSpeechSubmit"\)\.classList\.add\("hidden"\)/);
+  assert.match(vocabulary, /\$\("#vocabSpeechSubmit"\)\.classList\.remove\("hidden"\)/);
 });
 
 test('speaking direction keeps session controls aligned and disables answer choices', () => {
@@ -299,6 +302,9 @@ test('numbers offers explicit speech recognition with review and typing fallback
   assert.match(numbers, /That doesn’t match yet\. Try speaking again or type your answer\./);
   assert.match(numbers, /speechStatus !== "review"/);
   assert.match(styles, /numberSpeechStatus\[data-status="mismatch"\]/);
+  assert.match(numbers, /id="numberSpeechSubmit"[^>]*disabled/);
+  assert.match(numbers, /\$\("#numberSpeechSubmit"\)\.classList\.add\("number-hidden"\)/);
+  assert.match(numbers, /\$\("#numberSpeechSubmit"\)\.classList\.remove\("number-hidden"\)/);
 });
 
 test('number pattern mastery uses the same collapsible plus and minus pattern as vocabulary', () => {

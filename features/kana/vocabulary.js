@@ -464,6 +464,7 @@
     $("#vocabTypingModes").classList.add("hidden");
     $("#vocabRomajiPreview").classList.add("hidden");
     $("#vocabSpeechInterpretation").classList.add("hidden");
+    $("#vocabSpeechSubmit").classList.add("hidden");
     $("#vocabSpeechSubmit").disabled = true;
     $("#vocabRecord").textContent = "🎤 Speak";
     $("#vocabRecord").removeAttribute("aria-keyshortcuts");
@@ -747,7 +748,7 @@
             <div class="vocab-interpretation hidden" id="vocabSpeechInterpretation"><span>Interpreted as</span><strong id="vocabSpeechKana" lang="ja"></strong><small>Browser transcript is shown above.</small></div>
             <div class="vocab-typing-modes hidden" id="vocabTypingModes" aria-label="Typing script"><span>Type with</span><div class="vocab-segmented"><button id="vocabTypeJapanese" type="button" aria-pressed="true">Japanese</button><button id="vocabTypeRomaji" type="button" aria-pressed="false">Romaji</button></div></div>
             <div class="vocab-romaji-preview hidden" id="vocabRomajiPreview"><span>Kana preview</span><strong id="vocabRomajiKana" lang="ja">—</strong></div>
-            <div class="actions" id="vocabSpeechActions"><button class="big-button" id="vocabRecord" type="button">🎤 Speak</button><button class="ghost" id="vocabTypeInstead" type="button">Type instead</button><button class="big-button" id="vocabSpeechSubmit" type="button" disabled>Submit answer</button></div>
+            <div class="actions" id="vocabSpeechActions"><button class="big-button" id="vocabRecord" type="button">🎤 Speak</button><button class="ghost" id="vocabTypeInstead" type="button">Type instead</button><button class="big-button hidden" id="vocabSpeechSubmit" type="button" disabled>Submit answer</button></div>
             <p class="tiny">Your browser may send audio to its speech service. Recognition retries don’t affect your streak. This checks word recall, not pronunciation quality.</p>
           </div>
           <div class="feedback" id="vocabFeedback"></div>
@@ -1233,6 +1234,7 @@
     $("#vocabSpeechText").readOnly = false;
     $("#vocabTypingModes").classList.remove("hidden");
     $("#vocabSpeechInterpretation").classList.add("hidden");
+    $("#vocabSpeechSubmit").classList.remove("hidden");
     setTypingScript(typingScript);
   });
   $("#vocabSpeechText").addEventListener("input", () => {

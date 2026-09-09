@@ -301,7 +301,7 @@
             <div class="number-transcript"><label for="numberSpeechText" id="numberSpeechTextLabel">We heard</label><input id="numberSpeechText" lang="ja" readonly autocomplete="off" placeholder="Your Japanese number will appear here" aria-describedby="numberSpeechStatus"></div>
             <div class="number-interpretation number-hidden" id="numberSpeechInterpretation"><span>Interpreted as</span><strong id="numberSpeechReading" lang="ja"></strong><small>The browser transcript is shown above.</small></div>
             <div class="number-typing-modes number-hidden" id="numberTypingModes" aria-label="Typing script"><span>Type with</span><div class="number-segmented"><button id="numberTypeJapanese" type="button" aria-pressed="true">Japanese</button><button id="numberTypeRomaji" type="button" aria-pressed="false">Romaji</button></div></div>
-            <div class="number-actions" id="numberSpeechActions"><button class="big-button" id="numberRecord" type="button">🎤 Speak</button><button class="ghost" id="numberTypeInstead" type="button">Type instead</button><button class="big-button" id="numberSpeechSubmit" type="button" disabled>Submit answer</button></div>
+            <div class="number-actions" id="numberSpeechActions"><button class="big-button" id="numberRecord" type="button">🎤 Speak</button><button class="ghost" id="numberTypeInstead" type="button">Type instead</button><button class="big-button number-hidden" id="numberSpeechSubmit" type="button" disabled>Submit answer</button></div>
             <p class="tiny">Your browser may send audio to its speech service. Recognition retries don’t affect your streak. This checks number recall, not pronunciation quality.</p>
           </div>
           <div class="feedback" id="numberFeedback"></div>
@@ -556,6 +556,7 @@
     $("#numberSpeechActions").classList.remove("number-hidden");
     $("#numberTypingModes").classList.add("number-hidden");
     $("#numberSpeechInterpretation").classList.add("number-hidden");
+    $("#numberSpeechSubmit").classList.add("number-hidden");
     $("#numberSpeechSubmit").disabled = true;
     $("#numberRecord").textContent = "🎤 Speak";
     $("#numberRecord").removeAttribute("aria-keyshortcuts");
@@ -801,6 +802,7 @@
       $("#numberSpeechText").readOnly = false;
       $("#numberTypingModes").classList.remove("number-hidden");
       $("#numberSpeechInterpretation").classList.add("number-hidden");
+      $("#numberSpeechSubmit").classList.remove("number-hidden");
       setSpeakingTypingScript(speakingTypingScript);
     });
     $("#numberSpeechText").addEventListener("input", () => {
