@@ -115,6 +115,25 @@
           "text": "Speech diagnostics can now collect local, audio-free evidence from retry chains that end with a correct answer, with controls to review, copy, or clear it."
         }
       ]
+    },
+    {
+      "id": "2026-09-11.1",
+      "publishedAt": "2026-09-11",
+      "title": "Choose your vocabulary topics",
+      "changes": [
+        {
+          "pages": ["vocabulary"],
+          "text": "Practice scope now offers guided study, quick lesson selections, and any custom combination of curriculum topics in one focused picker."
+        },
+        {
+          "pages": ["vocabulary"],
+          "text": "Curriculum topics now open a searchable word browser with topic statistics, individual learning status and accuracy, pronunciation, and a direct practice shortcut."
+        },
+        {
+          "pages": ["hiragana", "katakana", "kana", "vocabulary", "numbers", "settings", "guided"],
+          "text": "Scrollable panels and native controls now consistently use the app’s dark appearance."
+        }
+      ]
     }
   ]
 }

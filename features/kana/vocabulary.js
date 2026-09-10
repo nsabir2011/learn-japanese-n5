@@ -268,7 +268,19 @@
   const Speaking = window.KANA_SPRINT_VOCABULARY_SPEAKING;
   const SpeechDiagnostics = window.KANA_SPRINT_SPEECH_DIAGNOSTICS;
   const UNIFIED_REVIEW_MODEL = "unified-v1";
-  const SCOPE_LABELS = { adaptive: "Guided course", all: "All vocabulary", core: "Core lessons", lesson1: "Lesson 1", lesson2: "Lesson 2", extras: "Practical extras", trouble: "Trouble words" };
+  const SCOPE_LABELS = { adaptive: "Guided course", all: "All vocabulary", core: "Core lessons", lesson1: "Lesson 1", lesson2: "Lesson 2", extras: "Practical extras", custom: "Custom topics", trouble: "Trouble words" };
+  const SCOPE_STAGE_IDS = {
+    all: STAGES.map(stage => stage.id),
+    core: STAGES.slice(0, 7).map(stage => stage.id),
+    lesson1: STAGES.slice(0, 4).map(stage => stage.id),
+    lesson2: STAGES.slice(4, 7).map(stage => stage.id),
+    extras: STAGES.slice(7).map(stage => stage.id)
+  };
+  const SCOPE_GROUPS = [
+    { id: "lesson1", label: "Lesson 1", stageIds: SCOPE_STAGE_IDS.lesson1 },
+    { id: "lesson2", label: "Lesson 2", stageIds: SCOPE_STAGE_IDS.lesson2 },
+    { id: "extras", label: "Practical extras", stageIds: SCOPE_STAGE_IDS.extras }
+  ];
   const CHOICE_COUNT_VALUES = ["auto", "4", "6", "8"];
 
   function emptyModeProgress() {
@@ -278,7 +290,7 @@
   function defaultState() {
     return {
       version: VERSION, total: 0, correct: 0, streak: 0, bestStreak: 0,
-      questionFormat: "mixed", practiceScope: "adaptive", pace: 50, newWordCredit: 0, unlockedStage: 0,
+      questionFormat: "mixed", practiceScope: "adaptive", customStageIds: [STAGES[0].id], pace: 50, newWordCredit: 0, unlockedStage: 0,
       autoPronounce: true, choiceCount: "auto", items: {}, recent: [], savedAt: 0
     };
   }
@@ -370,6 +382,9 @@
   if (state.questionFormat === "both") state.questionFormat = "mixed";
   if (!["written", "spoken", "recall", "speaking", "written-both", "mixed"].includes(state.questionFormat)) state.questionFormat = "mixed";
   if (!Object.hasOwn(SCOPE_LABELS, state.practiceScope)) state.practiceScope = "adaptive";
+  state.customStageIds = [...new Set(Array.isArray(state.customStageIds) ? state.customStageIds : [])]
+    .filter(id => STAGES.some(stage => stage.id === id));
+  if (!state.customStageIds.length) state.customStageIds = [STAGES[0].id];
   state.choiceCount = CHOICE_COUNT_VALUES.includes(String(state.choiceCount)) ? String(state.choiceCount) : "auto";
   state.pace = clamp(Number(state.pace) || 50, 10, 90);
   state.newWordCredit = clamp(Number(state.newWordCredit) || 0, 0, 1);
@@ -392,6 +407,10 @@
   let typingScript = state.typingScript === "romaji" ? "romaji" : "japanese";
   let speechEvidence = null;
   let currentSpeechPrompt = null;
+  let scopeDraft = "adaptive";
+  let scopeStageDraft = new Set(state.customStageIds);
+  let curriculumStageId = STAGES[0].id;
+  let curriculumFilter = "all";
 
   function updateSpeakingKeyboardHint() {
     const hint = $("#vocabKeyboardHint");
@@ -599,6 +618,7 @@
     if (scope === "lesson2") return WORDS.filter(word => word.stageIndex >= 4 && word.stageIndex <= 6);
     if (scope === "core") return WORDS.filter(word => word.stageIndex <= 6);
     if (scope === "extras") return WORDS.filter(word => word.stageIndex >= 7);
+    if (scope === "custom") return WORDS.filter(word => state.customStageIds.includes(word.stageId));
     if (scope === "trouble") return weakWords();
     const unlocked = unlockedStageIndex();
     return WORDS.filter(word => word.stageIndex <= unlocked);
@@ -616,7 +636,157 @@
   }
 
   function scopeShortLabel() {
-    return { adaptive: `Stage ${unlockedStageIndex() + 1} / ${STAGES.length}`, all: "All words", core: "Core", lesson1: "Lesson 1", lesson2: "Lesson 2", extras: "Extras", trouble: "Trouble" }[state.practiceScope];
+    return state.practiceScope === "custom"
+      ? `${state.customStageIds.length} topic${state.customStageIds.length === 1 ? "" : "s"}`
+      : { adaptive: `Stage ${unlockedStageIndex() + 1} / ${STAGES.length}`, all: "All words", core: "Core", lesson1: "Lesson 1", lesson2: "Lesson 2", extras: "Extras", trouble: "Trouble" }[state.practiceScope];
+  }
+
+  function regularScope(scope = state.practiceScope) {
+    return scope === "trouble" ? lastRegularScope : scope;
+  }
+
+  function scopeStageIds(scope = regularScope()) {
+    if (scope === "adaptive") return STAGES.slice(0, unlockedStageIndex() + 1).map(stage => stage.id);
+    if (scope === "custom") return state.customStageIds;
+    return SCOPE_STAGE_IDS[scope] || [];
+  }
+
+  function scopeSelectionSummary(scope = regularScope()) {
+    if (scope === "adaptive") return "New words follow the guided sequence";
+    const ids = scopeStageIds(scope);
+    const count = WORDS.filter(word => ids.includes(word.stageId)).length;
+    if (scope !== "custom") return `${count} words`;
+    const names = STAGES.filter(stage => ids.includes(stage.id)).map(stage => stage.name.replace(/^Lesson \d · |^Practical extras · /, ""));
+    const topicLabel = `${ids.length} topic${ids.length === 1 ? "" : "s"}`;
+    const nameSummary = names.length > 2 ? `${names.slice(0, 2).join(" + ")} + ${names.length - 2} more` : names.join(" + ");
+    return `${nameSummary} · ${topicLabel} · ${count} words`;
+  }
+
+  function renderScopeDialog() {
+    const dialog = $("#vocabScopeDialog");
+    if (!dialog) return;
+    dialog.querySelector('[data-scope-preset="adaptive"]').setAttribute("aria-pressed", String(scopeDraft === "adaptive"));
+    dialog.querySelectorAll(".vocab-scope-presets [data-scope-preset]").forEach(button => {
+      button.setAttribute("aria-pressed", String(scopeDraft === button.dataset.scopePreset));
+    });
+    dialog.querySelectorAll("[data-scope-topic]").forEach(input => { input.checked = scopeStageDraft.has(input.value); });
+    dialog.querySelectorAll("[data-scope-group]").forEach(input => {
+      const ids = SCOPE_GROUPS.find(group => group.id === input.dataset.scopeGroup)?.stageIds || [];
+      const selected = ids.filter(id => scopeStageDraft.has(id)).length;
+      input.checked = selected === ids.length;
+      input.indeterminate = selected > 0 && selected < ids.length;
+    });
+    const selectedWords = WORDS.filter(word => scopeStageDraft.has(word.stageId)).length;
+    const count = $("#vocabScopeDraftCount");
+    count.textContent = scopeDraft === "adaptive"
+      ? "Guided course selected"
+      : `${scopeStageDraft.size} topic${scopeStageDraft.size === 1 ? "" : "s"} · ${selectedWords} words`;
+    const valid = scopeDraft === "adaptive" || scopeStageDraft.size > 0;
+    $("#vocabScopeApply").disabled = !valid;
+    $("#vocabScopeValidation").textContent = valid ? "" : "Select at least one topic.";
+  }
+
+  function openScopeDialog() {
+    const baseScope = regularScope();
+    scopeDraft = baseScope;
+    scopeStageDraft = new Set(baseScope === "adaptive" ? [] : baseScope === "custom" ? state.customStageIds : SCOPE_STAGE_IDS[baseScope]);
+    renderScopeDialog();
+    const dialog = $("#vocabScopeDialog");
+    if (typeof dialog.showModal === "function") dialog.showModal(); else dialog.setAttribute("open", "");
+  }
+
+  function closeScopeDialog() {
+    const dialog = $("#vocabScopeDialog");
+    if (typeof dialog.close === "function") dialog.close(); else dialog.removeAttribute("open");
+  }
+
+  function applyScopeSelection() {
+    if (scopeDraft !== "adaptive" && !scopeStageDraft.size) return;
+    if (scopeDraft === "custom") state.customStageIds = STAGES.map(stage => stage.id).filter(id => scopeStageDraft.has(id));
+    state.practiceScope = scopeDraft;
+    lastRegularScope = state.practiceScope;
+    current = null;
+    closeScopeDialog();
+    saveState();
+    nextQuestion();
+  }
+
+  function curriculumWordStatus(word) {
+    const progress = itemState(word);
+    if (!progress.introduced) return { id: "unintroduced", label: "Not introduced" };
+    if (!progress.seen) return { id: "new", label: "New" };
+    if (wordIsDue(word)) return { id: "due", label: "Due" };
+    if (isMastered(word)) return { id: "mastered", label: "Mastered" };
+    return { id: "learning", label: "Learning" };
+  }
+
+  function renderCurriculumDialog() {
+    const stage = STAGES.find(candidate => candidate.id === curriculumStageId);
+    if (!stage) return;
+    const words = WORDS.filter(word => word.stageId === stage.id);
+    const progressItems = words.map(word => ({ word, progress: itemState(word), status: curriculumWordStatus(word) }));
+    const attempts = progressItems.reduce((sum, item) => sum + item.progress.seen, 0);
+    const correct = progressItems.reduce((sum, item) => sum + item.progress.correct, 0);
+    const introduced = progressItems.filter(item => item.progress.introduced).length;
+    const mastered = progressItems.filter(item => isMastered(item.word)).length;
+    const due = progressItems.filter(item => item.status.id === "due").length;
+    const query = $("#vocabCurriculumSearch").value.trim().toLocaleLowerCase();
+    const visible = progressItems.filter(item => {
+      const matchesFilter = curriculumFilter === "all"
+        || (curriculumFilter === "learning" && item.progress.introduced && !isMastered(item.word) && item.status.id !== "due")
+        || (curriculumFilter === "due" && item.status.id === "due")
+        || (curriculumFilter === "mastered" && isMastered(item.word))
+        || (curriculumFilter === "unintroduced" && item.status.id === "unintroduced");
+      const searchable = `${item.word.jp} ${item.word.romaji} ${item.word.meaning}`.toLocaleLowerCase();
+      return matchesFilter && (!query || searchable.includes(query));
+    });
+
+    $("#vocabCurriculumDialogTitle").textContent = stage.name.replace(" · ", ": ");
+    $("#vocabCurriculumDialogDescription").textContent = stage.description;
+    $("#vocabCurriculumTopicStats").innerHTML = `
+      <div><strong>${introduced}/${words.length}</strong><span>introduced</span></div>
+      <div><strong>${mastered}</strong><span>mastered</span></div>
+      <div><strong>${due}</strong><span>due</span></div>
+      <div><strong>${attempts ? `${Math.round(correct / attempts * 100)}%` : "—"}</strong><span>accuracy · ${attempts} ${attempts === 1 ? "attempt" : "attempts"}</span></div>`;
+    $("#vocabCurriculumFilters").querySelectorAll("button").forEach(button => {
+      button.setAttribute("aria-pressed", String(button.dataset.curriculumFilter === curriculumFilter));
+    });
+    $("#vocabCurriculumWordCount").textContent = `${visible.length} of ${words.length} words`;
+    $("#vocabCurriculumWords").innerHTML = visible.length ? visible.map(({ word, progress, status }) => {
+      const accuracy = progress.seen ? `${Math.round(progress.correct / progress.seen * 100)}%` : "—";
+      return `<div class="vocab-curriculum-word" data-status="${status.id}">
+        <div class="vocab-curriculum-term"><strong lang="ja">${word.jp}</strong><span>${word.romaji}</span></div>
+        <div class="vocab-curriculum-meaning">${word.meaning}</div>
+        <span class="vocab-word-status">${status.label}</span>
+        <div class="vocab-word-accuracy"><strong>${accuracy}</strong><span>${progress.seen} ${progress.seen === 1 ? "attempt" : "attempts"} · ${Math.round(progress.mastery)}% mastery</span></div>
+        <button class="vocab-word-speak" type="button" data-word-speak="${word.id}" aria-label="Pronounce ${word.jp}">🔊</button>
+      </div>`;
+    }).join("") : `<p class="vocab-curriculum-empty">No words match this search and filter.</p>`;
+  }
+
+  function openCurriculumDialog(stageId) {
+    curriculumStageId = stageId;
+    curriculumFilter = "all";
+    $("#vocabCurriculumSearch").value = "";
+    renderCurriculumDialog();
+    const dialog = $("#vocabCurriculumDialog");
+    if (typeof dialog.showModal === "function") dialog.showModal(); else dialog.setAttribute("open", "");
+  }
+
+  function closeCurriculumDialog() {
+    const dialog = $("#vocabCurriculumDialog");
+    if (typeof dialog.close === "function") dialog.close(); else dialog.removeAttribute("open");
+  }
+
+  function practiseCurriculumTopic() {
+    state.customStageIds = [curriculumStageId];
+    state.practiceScope = "custom";
+    lastRegularScope = "custom";
+    current = null;
+    closeCurriculumDialog();
+    saveState();
+    nextQuestion();
+    $("#panel-vocabulary").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function weakWords(words = reviewPoolForScope()) {
@@ -677,8 +847,6 @@
     if (state.practiceScope === "trouble") {
       if (!introduced.length) {
         state.practiceScope = lastRegularScope;
-        const select = $("#vocabPracticeScope");
-        if (select) select.value = state.practiceScope;
         return selectWord();
       }
       return { ...selectReviewWord(introduced, new Set(state.recent.slice(-5)), false), introduce: false, reason: "Trouble-word review" };
@@ -775,8 +943,8 @@
       <details class="card vocab-setup-card">
         <summary><span><strong>Session controls</strong><small id="vocabPaceStatus">Balanced introduction and review</small></span></summary>
         <div class="vocab-setup">
-          <div><h2>Vocabulary practice</h2><p class="muted">Guided course keeps new words in order; All vocabulary opens every lesson. Changing the format changes the question, not the word’s unlock or review schedule.</p></div>
-          <label><span>Practice scope</span><select id="vocabPracticeScope"><option value="adaptive">Guided course</option><option value="all">All vocabulary</option><option value="core">Core lessons</option><option value="lesson1">Lesson 1</option><option value="lesson2">Lesson 2</option><option value="extras">Practical extras</option><option value="trouble">Trouble words</option></select><small id="vocabScopeHint">New words follow the guided sequence; learned words remain reviewable.</small></label>
+          <div><h2>Vocabulary practice</h2><p class="muted">Guided course keeps new words in order. Choose a lesson preset or combine the topics you want to practise. Changing the format changes the question, not the word’s unlock or review schedule.</p></div>
+          <div class="vocab-scope-field"><span>Practice scope</span><button class="vocab-scope-trigger" id="vocabPracticeScope" type="button" aria-haspopup="dialog" aria-controls="vocabScopeDialog"><strong id="vocabScopeLabel">Guided course</strong><span aria-hidden="true">›</span></button><small id="vocabScopeHint">New words follow the guided sequence.</small></div>
           <label><span>Question direction</span><select id="vocabQuestionFormat"><option value="mixed">Mixed practice</option><option value="written-both">Japanese ↔ English (written)</option><option value="written">Japanese text → English</option><option value="spoken">Spoken Japanese → English</option><option value="recall">English → Japanese</option><option value="speaking">English → Japanese (Speaking)</option></select><small id="vocabFormatHint" aria-live="polite"></small></label>
           <label><span>Answer choices</span><select id="vocabChoiceCount"><option value="auto">Auto (adaptive)</option><option value="4">4 choices</option><option value="6">6 choices</option><option value="8">8 choices</option><option value="not-used" disabled>Not used for speaking</option></select><small id="vocabChoiceCountHint">Auto uses 4, 6, or 8 choices based on mastery.</small></label>
           <label class="vocab-pace"><span>New-word pace: <strong id="vocabPaceName">Balanced</strong></span><input id="vocabPace" type="range" min="10" max="90" step="10"><span class="vocab-pace-labels"><span>More review</span><span>More new</span></span></label>
@@ -788,7 +956,37 @@
         <div class="card"><h2>Practice coverage</h2><p class="muted">One shared review schedule; these direction stats help choose the next prompt.</p><div class="vocab-direction-grid"><div><span>Japanese → English</span><strong id="vocabWrittenMastery">0%</strong><small id="vocabWrittenRecent">Not practised</small></div><div><span>Listening</span><strong id="vocabSpokenMastery">0%</strong><small id="vocabSpokenRecent">Not practised</small></div><div><span>English → Japanese</span><strong id="vocabRecallMastery">0%</strong><small id="vocabRecallRecent">Not practised</small></div><div><span>Speaking</span><strong id="vocabSpeakingMastery">0%</strong><small id="vocabSpeakingRecent">Not practised</small></div></div></div>
         <div class="card vocab-trouble-card"><div class="vocab-section-heading"><div><h2>Trouble words</h2><p class="muted" id="vocabTroubleHint">Recent misses in the selected scope matter more than old mistakes.</p></div><button class="ghost" id="vocabReviewTrouble" type="button">Review trouble words</button></div><div class="vocab-trouble-list" id="vocabTroubleList"></div></div>
       </div>
-      <details class="card vocab-curriculum-card"><summary><span><strong>Lesson vocabulary curriculum</strong><small id="vocabCurriculumSummary">Stage 1 of ${STAGES.length}</small></span></summary><p class="muted">Guided course introduces new words in order and reviews words learned in any scope. All vocabulary opens the complete set without stage locks.</p><div class="vocab-stages" id="vocabStages"></div></details>`;
+      <details class="card vocab-curriculum-card"><summary><span><strong>Lesson vocabulary curriculum</strong><small id="vocabCurriculumSummary">Stage 1 of ${STAGES.length}</small></span></summary><p class="muted">This is a read-only view of your progress. Guided course introduces new words in order, while other scopes can practise topics directly.</p><div class="vocab-stages" id="vocabStages"></div></details>
+      <dialog class="vocab-scope-dialog" id="vocabScopeDialog" aria-labelledby="vocabScopeDialogTitle">
+        <div class="vocab-scope-dialog-shell">
+          <header><div><h2 id="vocabScopeDialogTitle">Choose practice scope</h2><p>Use the guided course, a quick selection, or choose individual topics.</p></div><button class="vocab-scope-close" id="vocabScopeClose" type="button" aria-label="Close practice scope">×</button></header>
+          <div class="vocab-scope-dialog-body">
+            <button class="vocab-scope-guided" type="button" data-scope-preset="adaptive" aria-pressed="false"><span><strong>Guided course</strong><small>Introduce new vocabulary in curriculum order while reviewing learned words.</small></span><i aria-hidden="true"></i></button>
+            <section class="vocab-scope-custom" aria-labelledby="vocabScopeCustomTitle">
+              <div class="vocab-scope-section-heading"><div><h3 id="vocabScopeCustomTitle">Choose topics</h3><p>Select any combination across lessons.</p></div><span id="vocabScopeDraftCount">0 topics</span></div>
+              <div class="vocab-scope-presets" aria-label="Quick selections">
+                <button type="button" data-scope-preset="core">Core lessons</button><button type="button" data-scope-preset="lesson1">Lesson 1</button><button type="button" data-scope-preset="lesson2">Lesson 2</button><button type="button" data-scope-preset="extras">Practical extras</button><button type="button" data-scope-preset="all">All vocabulary</button>
+              </div>
+              <div class="vocab-scope-groups">
+                ${SCOPE_GROUPS.map(group => `<fieldset class="vocab-scope-group"><legend><label><input type="checkbox" data-scope-group="${group.id}"><span>${group.label}</span></label></legend><div>${STAGES.filter(stage => group.stageIds.includes(stage.id)).map(stage => `<label class="vocab-topic-option"><input type="checkbox" value="${stage.id}" data-scope-topic><span><strong>${stage.name.replace(/^Lesson \d · |^Practical extras · /, "")}</strong><small>${stage.words.length} words · ${stage.description}</small></span></label>`).join("")}</div></fieldset>`).join("")}
+              </div>
+            </section>
+          </div>
+          <footer><p id="vocabScopeValidation" aria-live="polite"></p><div><button class="ghost" id="vocabScopeCancel" type="button">Cancel</button><button class="big-button" id="vocabScopeApply" type="button">Apply selection</button></div></footer>
+        </div>
+      </dialog>
+      <dialog class="vocab-curriculum-dialog" id="vocabCurriculumDialog" aria-labelledby="vocabCurriculumDialogTitle" aria-describedby="vocabCurriculumDialogDescription">
+        <div class="vocab-curriculum-dialog-shell">
+          <header><div><span>Topic vocabulary</span><h2 id="vocabCurriculumDialogTitle">Lesson vocabulary</h2><p id="vocabCurriculumDialogDescription"></p></div><button class="vocab-scope-close" id="vocabCurriculumClose" type="button" aria-label="Close topic vocabulary">×</button></header>
+          <div class="vocab-curriculum-dialog-body">
+            <div class="vocab-curriculum-topic-stats" id="vocabCurriculumTopicStats"></div>
+            <div class="vocab-curriculum-tools"><label><span class="sr-only">Search this topic</span><input id="vocabCurriculumSearch" type="search" placeholder="Search Japanese, romaji, or English…" autocomplete="off"></label><div class="vocab-curriculum-filters" id="vocabCurriculumFilters" aria-label="Filter words"><button type="button" data-curriculum-filter="all" aria-pressed="true">All</button><button type="button" data-curriculum-filter="learning">Learning</button><button type="button" data-curriculum-filter="due">Due</button><button type="button" data-curriculum-filter="mastered">Mastered</button><button type="button" data-curriculum-filter="unintroduced">Not introduced</button></div></div>
+            <div class="vocab-curriculum-list-heading"><span>Words</span><span id="vocabCurriculumWordCount"></span></div>
+            <div class="vocab-curriculum-words" id="vocabCurriculumWords"></div>
+          </div>
+          <footer><button class="ghost" id="vocabCurriculumCancel" type="button">Close</button><button class="big-button" id="vocabCurriculumPractice" type="button">Practice this topic</button></footer>
+        </div>
+      </dialog>`;
     const panelAnchor = $("#panel-wordprogress");
     if (panelAnchor) panelAnchor.before(panel); else $(".wrap").appendChild(panel);
 
@@ -804,7 +1002,6 @@
 
     tab.addEventListener("click", switchToVocabulary);
     document.querySelectorAll('.tab:not([data-tab="vocabulary"])').forEach(other => other.addEventListener("click", () => panel.classList.remove("active")));
-    $("#vocabPracticeScope").value = state.practiceScope;
     $("#vocabQuestionFormat").value = state.questionFormat;
     $("#vocabChoiceCount").value = state.choiceCount;
     $("#vocabPace").value = String(state.pace);
@@ -1187,6 +1384,10 @@
     setOptionalText("#vocabPaceStatus", paceStatus());
     const due = dueReviewBreakdown();
     const dueScopeLabel = SCOPE_LABELS[state.practiceScope];
+    setOptionalText("#vocabScopeLabel", SCOPE_LABELS[state.practiceScope]);
+    setOptionalText("#vocabScopeHint", state.practiceScope === "trouble"
+      ? `Recent trouble words within ${SCOPE_LABELS[lastRegularScope].toLowerCase()}.`
+      : scopeSelectionSummary(state.practiceScope));
     setOptionalText("#vocabDueSummary", due.total ? `${due.total} word${due.total === 1 ? "" : "s"} due` : "No words due");
     setOptionalText("#vocabDueBreakdown", `${dueScopeLabel} · one shared review queue · prompts adapt across enabled formats`);
     const currentStageWords = stageWords(unlocked);
@@ -1204,7 +1405,7 @@
       extras: "Only the additional daily-life and navigation vocabulary.",
       trouble: "Only weak words from the selected regular scope."
     };
-    setOptionalText("#vocabScopeHint", scopeHints[state.practiceScope]);
+    if (state.practiceScope !== "custom" && state.practiceScope !== "trouble") setOptionalText("#vocabScopeHint", scopeHints[state.practiceScope]);
     const troubleSourceScope = state.practiceScope === "trouble" ? (lastRegularScope === "adaptive" ? "Guided course" : SCOPE_LABELS[lastRegularScope]) : SCOPE_LABELS[state.practiceScope];
     setOptionalText("#vocabTroubleHint", `Recent misses in ${troubleSourceScope} matter more than old mistakes.`);
     setOptionalText("#vocabProgressStage", state.practiceScope === "adaptive" ? STAGES[unlocked].name : SCOPE_LABELS[state.practiceScope]);
@@ -1221,8 +1422,6 @@
       troubleButton.disabled = !weak.length;
       troubleButton.textContent = state.practiceScope === "trouble" ? `Return to ${SCOPE_LABELS[lastRegularScope]}` : "Review trouble words";
     }
-    const troubleOption = $("#vocabPracticeScope")?.querySelector('option[value="trouble"]');
-    if (troubleOption) troubleOption.disabled = !weak.length && state.practiceScope !== "trouble";
     $("#vocabStages").innerHTML = STAGES.map((stage, index) => {
       const words = stageWords(index);
       const introducedCount = words.filter(word => itemState(word).introduced).length;
@@ -1231,7 +1430,7 @@
       const practicedEarly = state.practiceScope === "adaptive" && index > unlocked && introducedCount > 0;
       const status = state.practiceScope === "adaptive" ? (index < unlocked ? "Complete" : index === unlocked ? "Current" : practicedEarly ? "Practiced early" : "Locked") : (selected ? (stageReady(index) ? "Complete" : "In scope") : "Filtered");
       const stageClass = selected ? "" : practicedEarly ? "pre-practiced" : "locked";
-      return `<div class="vocab-stage ${stageClass}"><span class="vocab-stage-number">${index + 1}</span><div><strong>${stage.name}</strong><p>${stage.description}</p><div class="vocab-stage-meter"><span style="width:${average}%"></span></div><small>${introducedCount} / ${words.length} introduced · ${average}% average mastery</small></div><span class="vocab-stage-status">${status}</span></div>`;
+      return `<button class="vocab-stage ${stageClass}" type="button" data-curriculum-stage="${stage.id}" aria-label="View words in ${stage.name}"><span class="vocab-stage-number">${index + 1}</span><span class="vocab-stage-content"><strong>${stage.name}</strong><span class="vocab-stage-description">${stage.description}</span><span class="vocab-stage-meter"><span style="width:${average}%"></span></span><small>${introducedCount} / ${words.length} introduced · ${average}% average mastery</small></span><span class="vocab-stage-status">${status}<i aria-hidden="true">›</i></span></button>`;
     }).join("");
     publishDashboard();
   }
@@ -1318,17 +1517,54 @@
   $("#vocabNext").addEventListener("click", nextQuestion);
   $("#vocabReviewTrouble").addEventListener("click", () => {
     state.practiceScope = state.practiceScope === "trouble" ? lastRegularScope : "trouble";
-    $("#vocabPracticeScope").value = state.practiceScope;
     current = null;
     nextQuestion();
     saveState();
   });
-  $("#vocabPracticeScope").addEventListener("change", event => {
-    state.practiceScope = event.target.value;
-    if (state.practiceScope !== "trouble") lastRegularScope = state.practiceScope;
-    current = null;
-    saveState();
-    nextQuestion();
+  $("#vocabPracticeScope").addEventListener("click", openScopeDialog);
+  $("#vocabScopeClose").addEventListener("click", closeScopeDialog);
+  $("#vocabScopeCancel").addEventListener("click", closeScopeDialog);
+  $("#vocabScopeApply").addEventListener("click", applyScopeSelection);
+  $("#vocabScopeDialog").addEventListener("click", event => {
+    if (event.target === event.currentTarget) closeScopeDialog();
+  });
+  $("#vocabScopeDialog").querySelectorAll("[data-scope-preset]").forEach(button => button.addEventListener("click", () => {
+    scopeDraft = button.dataset.scopePreset;
+    scopeStageDraft = new Set(scopeDraft === "adaptive" ? [] : SCOPE_STAGE_IDS[scopeDraft]);
+    renderScopeDialog();
+  }));
+  $("#vocabScopeDialog").querySelectorAll("[data-scope-topic]").forEach(input => input.addEventListener("change", () => {
+    scopeDraft = "custom";
+    if (input.checked) scopeStageDraft.add(input.value); else scopeStageDraft.delete(input.value);
+    renderScopeDialog();
+  }));
+  $("#vocabScopeDialog").querySelectorAll("[data-scope-group]").forEach(input => input.addEventListener("change", () => {
+    scopeDraft = "custom";
+    const ids = SCOPE_GROUPS.find(group => group.id === input.dataset.scopeGroup)?.stageIds || [];
+    ids.forEach(id => input.checked ? scopeStageDraft.add(id) : scopeStageDraft.delete(id));
+    renderScopeDialog();
+  }));
+  $("#vocabStages").addEventListener("click", event => {
+    const stage = event.target.closest("[data-curriculum-stage]");
+    if (stage) openCurriculumDialog(stage.dataset.curriculumStage);
+  });
+  $("#vocabCurriculumClose").addEventListener("click", closeCurriculumDialog);
+  $("#vocabCurriculumCancel").addEventListener("click", closeCurriculumDialog);
+  $("#vocabCurriculumPractice").addEventListener("click", practiseCurriculumTopic);
+  $("#vocabCurriculumDialog").addEventListener("click", event => {
+    if (event.target === event.currentTarget) closeCurriculumDialog();
+  });
+  $("#vocabCurriculumSearch").addEventListener("input", renderCurriculumDialog);
+  $("#vocabCurriculumFilters").addEventListener("click", event => {
+    const button = event.target.closest("[data-curriculum-filter]");
+    if (!button) return;
+    curriculumFilter = button.dataset.curriculumFilter;
+    renderCurriculumDialog();
+  });
+  $("#vocabCurriculumWords").addEventListener("click", event => {
+    const button = event.target.closest("[data-word-speak]");
+    const word = button && WORDS.find(candidate => candidate.id === button.dataset.wordSpeak);
+    if (word) speak(word);
   });
   $("#vocabManageVoices").addEventListener("click", () => window.KANA_SPRINT_SPEECH?.openSettings?.());
   $("#vocabQuestionFormat").addEventListener("change", event => {

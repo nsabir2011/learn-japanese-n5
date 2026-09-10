@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { Script } from 'node:vm';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const entrypoints = [
@@ -95,14 +96,24 @@ test('vocabulary choices reveal pronunciation or Japanese text only after answer
   assert.match(styles, /\.vocab-choice-japanese-secondary/);
 });
 
-test('vocabulary scopes separate guided sequencing from all-word practice', () => {
+test('vocabulary scope picker supports guided, preset, and custom topic practice', () => {
   const vocabulary = readFileSync(resolve(root, 'features/kana/vocabulary.js'), 'utf8');
+  assert.doesNotThrow(() => new Script(vocabulary));
   assert.match(vocabulary, /adaptive: "Guided course", all: "All vocabulary"/);
-  assert.match(vocabulary, /<option value="all">All vocabulary<\/option>/);
+  assert.match(vocabulary, /id="vocabScopeDialog"/);
+  assert.match(vocabulary, /id="vocabCurriculumDialog"/);
+  assert.match(vocabulary, /data-curriculum-stage/);
+  assert.match(vocabulary, /data-curriculum-filter="due"/);
+  assert.match(vocabulary, /Practice this topic/);
+  assert.match(vocabulary, /data-scope-preset="all">All vocabulary<\/button>/);
+  assert.match(vocabulary, /data-scope-topic/);
+  assert.match(vocabulary, /customStageIds/);
   assert.match(vocabulary, /if \(scope === "all"\) return WORDS/);
+  assert.match(vocabulary, /if \(scope === "custom"\) return WORDS\.filter\(word => state\.customStageIds\.includes\(word\.stageId\)\)/);
   assert.match(vocabulary, /all: "All words"/);
   assert.match(vocabulary, /const reviewPool = adaptive \? introducedWords\(\) : pool/);
   assert.match(vocabulary, /practicedEarly \? "Practiced early"/);
+  assert.match(vocabulary, /function applyScopeSelection/);
 });
 
 test('vocabulary review queue stays scoped and counts each word once', () => {
@@ -285,8 +296,8 @@ test('speaking direction keeps session controls aligned and disables answer choi
   assert.match(vocabulary, /<option value="not-used" disabled>Not used for speaking<\/option>/);
   assert.match(vocabulary, /choiceSelect\.disabled = speaking/);
   assert.match(vocabulary, /Multiple-choice settings don’t apply here\./);
-  assert.match(styles, /\.vocab-setup>label\{[^}]*align-self:start/);
-  assert.match(styles, /\.vocab-setup small\{min-height:2\.7em/);
+  assert.match(styles, /\.vocab-setup>label,\.vocab-scope-field\{[^}]*align-self:start/);
+  assert.match(styles, /\.vocab-setup small,\.vocab-scope-field>small\{min-height:2\.7em/);
 });
 
 test('numbers offers explicit speech recognition with review and typing fallback controls', () => {
