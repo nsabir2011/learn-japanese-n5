@@ -134,6 +134,17 @@
           "text": "Scrollable panels and native controls now consistently use the app’s dark appearance."
         }
       ]
+    },
+    {
+      "id": "2026-09-11.2",
+      "publishedAt": "2026-09-11",
+      "title": "Sort curriculum words",
+      "changes": [
+        {
+          "pages": ["vocabulary"],
+          "text": "Topic word lists can now be sorted by curriculum order, Japanese text, or accuracy, while unpractised words stay out of the way of accuracy rankings."
+        }
+      ]
     }
   ]
 }

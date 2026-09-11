@@ -282,6 +282,7 @@
     { id: "extras", label: "Practical extras", stageIds: SCOPE_STAGE_IDS.extras }
   ];
   const CHOICE_COUNT_VALUES = ["auto", "4", "6", "8"];
+  const JAPANESE_COLLATOR = new Intl.Collator("ja", { usage: "sort", sensitivity: "base", numeric: true });
 
   function emptyModeProgress() {
     return { seen: 0, correct: 0, wrong: 0, mastery: 0, lastWasCorrect: null, lastSeen: 0, dueAt: 0, dueQuestion: 0, recentResults: [] };
@@ -411,6 +412,7 @@
   let scopeStageDraft = new Set(state.customStageIds);
   let curriculumStageId = STAGES[0].id;
   let curriculumFilter = "all";
+  let curriculumSort = "accuracy-low";
 
   function updateSpeakingKeyboardHint() {
     const hint = $("#vocabKeyboardHint");
@@ -741,6 +743,26 @@
       return matchesFilter && (!query || searchable.includes(query));
     });
 
+    visible.sort((left, right) => {
+      if (curriculumSort === "japanese-asc" || curriculumSort === "japanese-desc") {
+        const comparison = JAPANESE_COLLATOR.compare(left.word.jp, right.word.jp);
+        return curriculumSort === "japanese-desc" ? -comparison : comparison;
+      }
+      if (curriculumSort === "accuracy-low" || curriculumSort === "accuracy-high") {
+        const leftUnattempted = left.progress.seen === 0;
+        const rightUnattempted = right.progress.seen === 0;
+        if (leftUnattempted !== rightUnattempted) return leftUnattempted ? 1 : -1;
+        if (!leftUnattempted) {
+          const leftAccuracy = left.progress.correct / left.progress.seen;
+          const rightAccuracy = right.progress.correct / right.progress.seen;
+          const comparison = curriculumSort === "accuracy-low" ? leftAccuracy - rightAccuracy : rightAccuracy - leftAccuracy;
+          if (comparison) return comparison;
+          if (left.progress.seen !== right.progress.seen) return right.progress.seen - left.progress.seen;
+        }
+      }
+      return left.word.order - right.word.order;
+    });
+
     $("#vocabCurriculumDialogTitle").textContent = stage.name.replace(" · ", ": ");
     $("#vocabCurriculumDialogDescription").textContent = stage.description;
     $("#vocabCurriculumTopicStats").innerHTML = `
@@ -752,6 +774,7 @@
       button.setAttribute("aria-pressed", String(button.dataset.curriculumFilter === curriculumFilter));
     });
     $("#vocabCurriculumWordCount").textContent = `${visible.length} of ${words.length} words`;
+    $("#vocabCurriculumSort").value = curriculumSort;
     $("#vocabCurriculumWords").innerHTML = visible.length ? visible.map(({ word, progress, status }) => {
       const accuracy = progress.seen ? `${Math.round(progress.correct / progress.seen * 100)}%` : "—";
       return `<div class="vocab-curriculum-word" data-status="${status.id}">
@@ -767,6 +790,7 @@
   function openCurriculumDialog(stageId) {
     curriculumStageId = stageId;
     curriculumFilter = "all";
+    curriculumSort = "accuracy-low";
     $("#vocabCurriculumSearch").value = "";
     renderCurriculumDialog();
     const dialog = $("#vocabCurriculumDialog");
@@ -981,7 +1005,7 @@
           <div class="vocab-curriculum-dialog-body">
             <div class="vocab-curriculum-topic-stats" id="vocabCurriculumTopicStats"></div>
             <div class="vocab-curriculum-tools"><label><span class="sr-only">Search this topic</span><input id="vocabCurriculumSearch" type="search" placeholder="Search Japanese, romaji, or English…" autocomplete="off"></label><div class="vocab-curriculum-filters" id="vocabCurriculumFilters" aria-label="Filter words"><button type="button" data-curriculum-filter="all" aria-pressed="true">All</button><button type="button" data-curriculum-filter="learning">Learning</button><button type="button" data-curriculum-filter="due">Due</button><button type="button" data-curriculum-filter="mastered">Mastered</button><button type="button" data-curriculum-filter="unintroduced">Not introduced</button></div></div>
-            <div class="vocab-curriculum-list-heading"><span>Words</span><span id="vocabCurriculumWordCount"></span></div>
+            <div class="vocab-curriculum-list-heading"><span>Words</span><div><span id="vocabCurriculumWordCount"></span><label><span>Sort</span><select id="vocabCurriculumSort"><option value="curriculum">Curriculum order</option><option value="japanese-asc">Japanese: A–Z</option><option value="japanese-desc">Japanese: Z–A</option><option value="accuracy-low">Accuracy: low first</option><option value="accuracy-high">Accuracy: high first</option></select></label></div></div>
             <div class="vocab-curriculum-words" id="vocabCurriculumWords"></div>
           </div>
           <footer><button class="ghost" id="vocabCurriculumCancel" type="button">Close</button><button class="big-button" id="vocabCurriculumPractice" type="button">Practice this topic</button></footer>
@@ -1555,6 +1579,10 @@
     if (event.target === event.currentTarget) closeCurriculumDialog();
   });
   $("#vocabCurriculumSearch").addEventListener("input", renderCurriculumDialog);
+  $("#vocabCurriculumSort").addEventListener("change", event => {
+    curriculumSort = event.target.value;
+    renderCurriculumDialog();
+  });
   $("#vocabCurriculumFilters").addEventListener("click", event => {
     const button = event.target.closest("[data-curriculum-filter]");
     if (!button) return;

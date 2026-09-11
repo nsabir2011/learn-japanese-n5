@@ -105,6 +105,9 @@ test('vocabulary scope picker supports guided, preset, and custom topic practice
   assert.match(vocabulary, /data-curriculum-stage/);
   assert.match(vocabulary, /data-curriculum-filter="due"/);
   assert.match(vocabulary, /Practice this topic/);
+  assert.match(vocabulary, /id="vocabCurriculumSort"/);
+  assert.match(vocabulary, /Accuracy: low first/);
+  assert.match(vocabulary, /JAPANESE_COLLATOR/);
   assert.match(vocabulary, /data-scope-preset="all">All vocabulary<\/button>/);
   assert.match(vocabulary, /data-scope-topic/);
   assert.match(vocabulary, /customStageIds/);
