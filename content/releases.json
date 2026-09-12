@@ -145,6 +145,17 @@
           "text": "Topic word lists can now be sorted by curriculum order, Japanese text, or accuracy, while unpractised words stay out of the way of accuracy rankings."
         }
       ]
+    },
+    {
+      "id": "2026-09-12.1",
+      "publishedAt": "2026-09-12",
+      "title": "Vocabulary in context",
+      "changes": [
+        {
+          "pages": ["vocabulary"],
+          "text": "Every submitted vocabulary answer now includes a natural example sentence, an English translation, and separate sentence pronunciation playback."
+        }
+      ]
     }
   ]
 }

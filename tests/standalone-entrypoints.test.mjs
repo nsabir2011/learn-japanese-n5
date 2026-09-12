@@ -119,6 +119,17 @@ test('vocabulary scope picker supports guided, preset, and custom topic practice
   assert.match(vocabulary, /function applyScopeSelection/);
 });
 
+test('vocabulary answers reveal a highlighted example with separate sentence audio', () => {
+  const html = readFileSync(resolve(root, 'vocabulary.html'), 'utf8');
+  const vocabulary = readFileSync(resolve(root, 'features/kana/vocabulary.js'), 'utf8');
+  const styles = readFileSync(resolve(root, 'features/kana/vocabulary.css'), 'utf8');
+  assert.match(html, /vocabulary-examples\.js/);
+  assert.match(vocabulary, /class="vocab-example"/);
+  assert.match(vocabulary, /id="vocabPlayExample"/);
+  assert.match(vocabulary, /speakJapanese\?\.\(Examples\[word\.id\]\?\.\[0\]\)/);
+  assert.match(styles, /\.vocab-example p mark/);
+});
+
 test('vocabulary review queue stays scoped and counts each word once', () => {
   const vocabulary = readFileSync(resolve(root, 'features/kana/vocabulary.js'), 'utf8');
   assert.match(vocabulary, /function regularReviewPool/);
@@ -164,7 +175,7 @@ test('vocabulary introduction and TTS controls have keyboard access', () => {
   assert.match(vocabulary, /aria-keyshortcuts="Enter"/);
   assert.match(vocabulary, /setTimeout\(\(\) => \$\("#vocabStartCheck"\)\?\.focus\(\), 0\)/);
   assert.match(vocabulary, /Play again <kbd>R<\/kbd>/);
-  assert.match(vocabulary, /Replay Japanese <kbd>R<\/kbd>/);
+  assert.match(vocabulary, /Replay word <kbd>R<\/kbd>/);
   assert.doesNotMatch(vocabulary, /Replay as often as you need, or press <kbd>R<\/kbd>/);
   assert.doesNotMatch(vocabulary, /Press <kbd>R<\/kbd> to replay the audio/);
   assert.doesNotMatch(vocabulary, /<kbd>R<\/kbd> to hear it/);

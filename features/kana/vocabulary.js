@@ -266,6 +266,7 @@
   const Scheduler = window.KANA_SPRINT_VOCABULARY_SCHEDULER;
   const MODE_KEYS = ["written", "spoken", "recall", "speaking"];
   const Speaking = window.KANA_SPRINT_VOCABULARY_SPEAKING;
+  const Examples = window.KANA_SPRINT_VOCABULARY_EXAMPLES || {};
   const SpeechDiagnostics = window.KANA_SPRINT_SPEECH_DIAGNOSTICS;
   const UNIFIED_REVIEW_MODEL = "unified-v1";
   const SCOPE_LABELS = { adaptive: "Guided course", all: "All vocabulary", core: "Core lessons", lesson1: "Lesson 1", lesson2: "Lesson 2", extras: "Practical extras", custom: "Custom topics", trouble: "Trouble words" };
@@ -917,6 +918,12 @@
     return Boolean(window.KANA_SPRINT_SPEECH?.hasJapaneseVoice?.());
   }
   function speak(word) { return window.KANA_SPRINT_SPEECH?.speakJapanese?.(word.jp); }
+  function speakExample(word) { return window.KANA_SPRINT_SPEECH?.speakJapanese?.(Examples[word.id]?.[0]); }
+  function highlightExample(sentence, focus) {
+    const index = sentence.indexOf(focus);
+    if (index < 0) return sentence;
+    return `${sentence.slice(0, index)}<mark>${focus}</mark>${sentence.slice(index + focus.length)}`;
+  }
   function nextQuestionFormat(word, preferredMode) {
     if (preferredMode && allowedModes().includes(preferredMode)) return preferredMode;
     const modes = allowedModes();
@@ -1307,9 +1314,13 @@
     const feedback = $("#vocabFeedback");
     feedback.className = `feedback show ${correct ? "good" : "bad"}`;
     const selectedMarkup = selectedWord ? `<div class="vocab-feedback-choice"><span class="vocab-feedback-choice-label">Your choice</span><strong>${selectedWord.jp} → ${selectedWord.romaji}</strong><span>Meaning: ${selectedWord.meaning}</span></div>` : "";
-    feedback.innerHTML = `<strong>${correct ? "Correct" : "Remember this one"}</strong><div class="meta">${selectedMarkup}<span class="vocab-feedback-word">Correct answer: ${current.jp} → ${current.romaji}</span><span>Meaning: ${current.meaning} • ${current.stageName}</span><button class="ghost speak-again" id="vocabReplayAnswer" type="button" aria-keyshortcuts="R">🔊 Replay Japanese <kbd>R</kbd></button></div>`;
+    const example = Examples[current.id];
+    const exampleMarkup = example ? `<div class="vocab-example"><span class="vocab-example-label">In a sentence</span><p lang="ja">${highlightExample(example[0], example[2] || current.jp.replace("～", ""))}</p><span>${example[1]}</span><button class="ghost" id="vocabPlayExample" type="button">🔊 Play sentence</button></div>` : "";
+    feedback.innerHTML = `<strong>${correct ? "Correct" : "Remember this one"}</strong><div class="meta">${selectedMarkup}<span class="vocab-feedback-word">Correct answer: ${current.jp} → ${current.romaji}</span><span>Meaning: ${current.meaning} • ${current.stageName}</span><div class="vocab-answer-audio"><button class="ghost speak-again" id="vocabReplayAnswer" type="button" aria-keyshortcuts="R">🔊 Replay word <kbd>R</kbd></button></div>${exampleMarkup}</div>`;
     $("#vocabReplayAnswer").disabled = !japaneseSpeechReady();
     $("#vocabReplayAnswer").addEventListener("click", () => speak(current));
+    if ($("#vocabPlayExample")) $("#vocabPlayExample").disabled = !japaneseSpeechReady();
+    $("#vocabPlayExample")?.addEventListener("click", () => speakExample(current));
     $("#vocabNext").classList.remove("hidden");
     $("#vocabDontKnow").classList.add("hidden");
     if (state.autoPronounce) speak(current);
